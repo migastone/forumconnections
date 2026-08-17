@@ -492,7 +492,11 @@ footer a{color:#B9B3DA}
       <div class="tool-body">
         <p class="tool-step">1 · Scegli uno o più settori che vuoi raggiungere</p>
         <div class="chips" id="chips"></div>
-        <p style="font-size:.84rem;color:#8B87A6;margin:14px 0 0">
+
+        <p class="tool-step" style="margin-top:26px">2 · Che dimensione hanno le aziende che ti interessano? <span style="text-transform:none;letter-spacing:0;font-weight:600;color:#8B87A6">(facoltativo)</span></p>
+        <div class="chips" id="chips-dim"></div>
+
+        <p style="font-size:.84rem;color:#8B87A6;margin:16px 0 0">
           <button id="reset" style="background:none;border:0;color:var(--gold-dk);font-weight:700;
             cursor:pointer;padding:0;font-size:.84rem;text-decoration:underline">Azzera la selezione</button>
         </p>
@@ -606,9 +610,9 @@ footer a{color:#B9B3DA}
       <span class="code">ECONOMY20</span>
       <p>20% di sconto sul biglietto — inserisci il codice al momento dell'acquisto</p>
       <p style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(26,19,48,.25);font-weight:700">
-        ⚠ Il codice va dimostrato all'ingresso: presentati alla cassa con una <strong>copia cartacea
-        di Economy</strong> oppure con una <strong>foto della rivista</strong>.<br>
-        <span style="font-weight:600">Senza prova, il biglietto scontato non dà diritto all'accesso.</span>
+        ⚠ Il codice da solo non basta: presentati alla cassa con una <strong>copia cartacea
+        di Economy</strong> oppure con una <strong>foto dove hai in mano la rivista cartacea</strong>.<br>
+        <span style="font-weight:600">Senza prova alle casse, il biglietto scontato non dà diritto all'accesso.</span>
       </p>
     </div>
   </div>
@@ -1056,10 +1060,12 @@ Object.entries(TESTIMONIANZE).forEach(([box, lista]) => {
 });
 
 /* ---------- TOOL ---------- */
-const sel = new Set();
-const chips = document.getElementById('chips');
-const out   = document.getElementById('out');
-const fmt   = n => n.toLocaleString('it-IT');
+const sel    = new Set();   // aree di influenza scelte
+const selDim = new Set();   // dimensioni aziendali scelte
+const chips    = document.getElementById('chips');
+const chipsDim = document.getElementById('chips-dim');
+const out      = document.getElementById('out');
+const fmt      = n => n.toLocaleString('it-IT');
 
 AREE.forEach(a => {
   const b = document.createElement('button');
@@ -1074,9 +1080,24 @@ AREE.forEach(a => {
   chips.appendChild(b);
 });
 
+DIMENSIONI.forEach(d => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button';
+  b.setAttribute('aria-pressed','false'); b.dataset.id = d.id;
+  b.innerHTML = `${d.nome} <span style="color:#8B87A6;font-weight:500">${d.det}</span>
+                 <span class="cnt">${fmt(d.tot)}</span>`;
+  b.addEventListener('click', () => {
+    if (selDim.has(d.id)) { selDim.delete(d.id); b.setAttribute('aria-pressed','false'); }
+    else                  { selDim.add(d.id);    b.setAttribute('aria-pressed','true');  }
+    render();
+  });
+  chipsDim.appendChild(b);
+});
+
 document.getElementById('reset').addEventListener('click', () => {
-  sel.clear();
-  chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed','false'));
+  sel.clear(); selDim.clear();
+  document.querySelectorAll('#chips .chip, #chips-dim .chip')
+    .forEach(c => c.setAttribute('aria-pressed','false'));
   render();
 });
 
@@ -1086,10 +1107,14 @@ function render(){
     return;
   }
   const aree = AREE.filter(a => sel.has(a.id));
+  const dims = DIMENSIONI.filter(d => selDim.has(d.id));
 
-  /* copertura: il massimo tra le aree scelte è la stima prudente
-     (le persone si sovrappongono, quindi NON sommiamo) */
-  const picco = Math.max(...aree.map(a => a.tot));
+  /* copertura: il massimo tra le combinazioni scelte è la stima prudente
+     (le persone si sovrappongono, quindi NON sommiamo).
+     Con il filtro dimensione attivo si legge l'incrocio area × dimensione. */
+  const picco = dims.length
+    ? Math.max(...aree.flatMap(a => dims.map(d => (AREA_X_DIM[a.id] || {})[d.id] || 0)))
+    : Math.max(...aree.map(a => a.tot));
 
   /* sottosettori uniti */
   const subs = [];
@@ -1107,11 +1132,15 @@ function render(){
     .sort((x,y) => y.n - x.n).slice(0,8);
 
   const nomi = aree.map(a => a.nome).join(' · ');
+  const nomiDim = dims.map(d => `${d.nome} (${d.det})`).join(' · ');
 
   out.innerHTML = `
     <div class="res-head">
       <span class="big">${fmt(picco)}+</span>
-      <p>persone della rete MigaMATCH hanno influenza diretta in:<br><strong style="color:#fff">${nomi}</strong></p>
+      <p>persone della rete MigaMATCH hanno influenza diretta in:<br><strong style="color:#fff">${nomi}</strong>
+      ${dims.length ? `<br><span style="display:inline-block;margin-top:10px;padding:5px 14px;
+          border:1px solid rgba(239,199,94,.5);border-radius:99px;font-size:.85rem">
+          e ci arrivano in aziende di taglia: <strong style="color:var(--gold)">${nomiDim}</strong></span>` : ''}</p>
     </div>
     <div class="res-grid">
       <div class="res-col">
@@ -1136,9 +1165,13 @@ function render(){
       <strong>Come leggerlo.</strong> La colonna di sinistra dice <em>chi sono</em> le persone che hanno
       contatti nei settori che hai scelto: è il loro mestiere, ed è il motivo per cui possono presentarti.
       La colonna di destra dice <em>dove</em> arrivano esattamente i loro contatti.
-      Il numero grande è una stima prudente: prendiamo il valore dell'area più popolata invece di sommare,
-      perché la stessa persona ha spesso influenza in più settori e sommare gonfierebbe il dato.
-      Estrazione aggregata e anonima della rete MigaMATCH al 17 agosto 2026 (2.142 profili qualificati):
+      Il numero grande è una stima prudente: prendiamo il valore della combinazione più popolata invece
+      di sommare, perché la stessa persona ha spesso influenza in più settori e sommare gonfierebbe il dato.
+      ${dims.length ? `<br><strong>Sul filtro dimensione.</strong> La taglia delle aziende è un campo
+      facoltativo della profilazione: l'ha compilato ${fmt(DIM_COMPILATO)} connettori su ${fmt(RETE_TOT)}.
+      Filtrando per dimensione stai quindi cercando dentro quei ${fmt(DIM_COMPILATO)}, non dentro tutta
+      la rete: i numeri che vedi sono per forza più bassi, ma sono quelli certi.` : ''}
+      Estrazione aggregata e anonima della rete MigaMATCH al 17 agosto 2026 (${fmt(RETE_TOT)} profili qualificati):
       è il bacino da cui vengono selezionati i 350 partecipanti dell'evento.
     </p>`;
 }

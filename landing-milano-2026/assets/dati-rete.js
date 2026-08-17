@@ -32,6 +32,44 @@ const AREE = [
   { id:'education',     nome:'Scuola, Università & Cultura',      ico:'\u{1F4DA}', tot:418  }
 ];
 
+/* Dimensione delle aziende con cui i connettori hanno relazione.
+   Campo di profilazione `company_size_relations`.
+   ATTENZIONE alla copertura: solo 987 dei 2.142 connettori qualificati hanno
+   compilato questo campo. Il filtro dimensione quindi restringe SOLO dentro
+   quei 987, e la pagina lo dichiara esplicitamente. */
+const DIM_COMPILATO = 987;
+
+const DIMENSIONI = [
+  { id:'micro',   nome:'Microimprese',   det:'3–9 addetti',       tot:723 },
+  { id:'piccole', nome:'Piccole imprese', det:'10–49 addetti',    tot:734 },
+  { id:'medie',   nome:'Medie imprese',   det:'50–249 addetti',   tot:423 },
+  { id:'grandi',  nome:'Grandi imprese',  det:'250+ addetti',     tot:204 },
+  { id:'enti',    nome:'Enti statali',    det:'PA e partecipate', tot:116 }
+];
+
+/* Incrocio area di influenza × dimensione azienda: persone distinte */
+const AREA_X_DIM = {
+consulting:{enti:96,grandi:171,medie:347,micro:574,piccole:603},
+creative:{enti:69,grandi:107,medie:232,micro:390,piccole:398},
+education:{enti:67,grandi:86,medie:167,micro:275,piccole:285},
+energy:{enti:71,grandi:111,medie:228,micro:380,piccole:391},
+events:{enti:60,grandi:91,medie:186,micro:344,piccole:340},
+finance:{enti:74,grandi:121,medie:264,micro:461,piccole:470},
+food:{enti:69,grandi:102,medie:220,micro:379,piccole:399},
+health:{enti:66,grandi:95,medie:189,micro:345,piccole:352},
+hr:{enti:66,grandi:125,medie:229,micro:350,piccole:382},
+logistics:{enti:45,grandi:76,medie:157,micro:242,piccole:266},
+manufacturing:{enti:56,grandi:99,medie:208,micro:275,piccole:313},
+marketing:{enti:79,grandi:133,medie:281,micro:519,piccole:520},
+real_estate:{enti:83,grandi:118,medie:259,micro:472,piccole:471},
+retail:{enti:72,grandi:110,medie:229,micro:450,piccole:435},
+safety:{enti:55,grandi:98,medie:194,micro:298,piccole:322},
+services:{enti:71,grandi:104,medie:238,micro:402,piccole:420},
+tech:{enti:71,grandi:131,medie:260,micro:410,piccole:432},
+tourism:{enti:81,grandi:103,medie:219,micro:414,piccole:405},
+training:{enti:87,grandi:153,medie:314,micro:498,piccole:531}
+};
+
 /* Sottosettori: chi, dentro quell'area, i connettori conoscono davvero */
 const SOTTOSETTORI = {
 consulting:[{s:"Analisi e ottimizzazione dei processi aziendali",n:614},{s:"Business coaching e consulenza organizzativa",n:580},{s:"Consulenza direzionale e strategica",n:559},{s:"Consulenza fiscale e legale",n:497},{s:"Pianificazione e controllo di gestione",n:226},{s:"Temporary management e fractional executive",n:143}],
