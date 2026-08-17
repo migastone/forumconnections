@@ -246,6 +246,26 @@ details p{margin:14px 0 0}
 .vids{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
 .vid{border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.16);background:#000}
 .vid .cap{padding:12px 15px;font-size:.86rem;color:#CFCBE6;background:rgba(255,255,255,.05)}
+section:not(.sec-dark):not(.sec-navy) .vid{border-color:var(--line)}
+section:not(.sec-dark):not(.sec-navy) .vid .cap{color:var(--body);background:var(--paper-2)}
+.tgroup{font-family:var(--sans);font-weight:800;font-size:.76rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold-dk);margin:38px 0 16px;padding-bottom:9px;
+  border-bottom:2px solid var(--line)}
+/* facciata click-to-play: evita di caricare 20 iframe all'apertura */
+.play{position:absolute;inset:0;width:100%;height:100%;border:0;cursor:pointer;padding:0;
+  background:#1B1450 center/cover no-repeat;display:flex;align-items:flex-end;
+  justify-content:flex-start;transition:.15s}
+.play::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(27,20,80,.15),rgba(18,14,56,.82))}
+.play::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:66px;height:66px;border-radius:50%;background:var(--gold);
+  box-shadow:0 6px 22px rgba(0,0,0,.45);transition:.15s}
+.play .tri{position:absolute;top:50%;left:50%;transform:translate(-42%,-50%);z-index:2;
+  border-style:solid;border-width:13px 0 13px 21px;
+  border-color:transparent transparent transparent #1B1450}
+.play:hover::after{transform:translate(-50%,-50%) scale(1.09)}
+.play .who{position:relative;z-index:2;color:#fff;font-weight:700;font-size:.92rem;
+  text-align:left;padding:14px 16px;line-height:1.35;text-shadow:0 2px 8px rgba(0,0,0,.6)}
 
 /* ---------- Sticky bar ---------- */
 .sticky{position:fixed;left:0;right:0;bottom:0;background:var(--navy);z-index:60;
@@ -326,11 +346,11 @@ footer a{color:#B9B3DA}
 
     <div class="cta-block">
       <a href="#biglietti" class="btn big">VOGLIO IL MIO TAVOLO CALCOLATO →</a>
-      <p class="btn-sub" style="color:#B9B3DA">Posti limitati a 300 · Pranzo incluso · Lettori Economy: 20% di sconto</p>
+      <p class="btn-sub" style="color:#B9B3DA">Posti limitati a 350 · Pranzo incluso · Lettori Economy: 20% di sconto</p>
     </div>
 
     <div class="hero-meta">
-      <div><b>300</b> ospiti business</div>
+      <div><b>350</b> ospiti business</div>
       <div><b>42</b> incontri garantiti</div>
       <div><b>38%</b> aziende 1–50 Mln €</div>
       <div><b>2.700</b> speed meeting</div>
@@ -511,18 +531,11 @@ footer a{color:#B9B3DA}
       Più della metà di quegli incontri sono stati classificati dai partecipanti stessi come
       <strong>incontri di valore</strong>. Prova a ottenere questo numero con otto mesi di aperitivi.</p>
 
-    <div class="vids" style="margin-top:40px">
+    <div style="max-width:820px;margin:44px auto 0">
+      <p class="kicker" style="color:var(--gold);text-align:center;margin-bottom:14px">Com'è andata l'ultima volta</p>
       <div class="vid">
-        <div class="ratio"><iframe src="https://www.youtube.com/embed/_NtUNdpTcvk" title="Ingegneria Relazionale — Oscar Dalvit" allowfullscreen loading="lazy"></iframe></div>
-        <div class="cap">Ingegneria Relazionale: il potere degli incontri Dispari — Oscar Dalvit</div>
-      </div>
-      <div class="vid">
-        <div class="ratio"><iframe src="https://player.vimeo.com/video/1132170294" title="Katia Burdet e Giuseppe Tringali" allowfullscreen loading="lazy"></iframe></div>
-        <div class="cap">Katia Burdet e Giuseppe Tringali prima del Forum</div>
-      </div>
-      <div class="vid">
-        <div class="ratio"><iframe src="https://player.vimeo.com/video/1124648070" title="Andrea Pietrini — YourGroup" allowfullscreen loading="lazy"></iframe></div>
-        <div class="cap">Andrea Pietrini (YourGroup), speaker del Forum</div>
+        <div class="ratio"><iframe src="https://player.vimeo.com/video/1152553282?badge=0" title="Forum Connections San Marino, novembre 2025" allowfullscreen loading="lazy"></iframe></div>
+        <div class="cap">Forum Connections — San Marino, 19 novembre 2025</div>
       </div>
     </div>
 
@@ -532,6 +545,33 @@ footer a{color:#B9B3DA}
         <img src="assets/img/forbes.png" alt="Forbes">
         <img src="assets/img/millionaire.png" alt="Millionaire">
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TESTIMONIANZE ══════════ -->
+<section id="testimonianze">
+  <div class="wrap">
+    <div class="narrow" style="text-align:center;margin-bottom:36px">
+      <p class="kicker">Non prendere la nostra parola</p>
+      <h2>Le facce di chi c'era</h2>
+      <p class="lead">Sono le interviste raccolte alle ultime edizioni, a caldo, appena usciti dalla sala.
+        Nessuna è stata scritta da noi. Guardane due o tre a caso: <strong>la cosa che tornano
+        a dire tutti è la stessa</strong> — non si aspettavano di trovare quelle persone
+        sedute proprio lì.</p>
+    </div>
+
+    <p class="tgroup">Sull'efficacia dell'algoritmo AIRA©</p>
+    <div class="vids" id="tg-aira"></div>
+
+    <p class="tgroup">Sulla giornata di networking</p>
+    <div class="vids" id="tg-giornata"></div>
+
+    <p class="tgroup">Gli interventi dei nostri formatori</p>
+    <div class="vids" id="tg-formatori"></div>
+
+    <div class="cta-block">
+      <a href="#biglietti" class="btn big">VOGLIO ESSERE NELLA PROSSIMA →</a>
     </div>
   </div>
 </section>
@@ -565,6 +605,11 @@ footer a{color:#B9B3DA}
       <p style="margin:0 0 4px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.76rem">Riservato ai lettori di Economy</p>
       <span class="code">ECONOMY20</span>
       <p>20% di sconto sul biglietto — inserisci il codice al momento dell'acquisto</p>
+      <p style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(26,19,48,.25);font-weight:700">
+        ⚠ Il codice va dimostrato all'ingresso: presentati alla cassa con una <strong>copia cartacea
+        di Economy</strong> oppure con una <strong>foto della rivista</strong>.<br>
+        <span style="font-weight:600">Senza prova, il biglietto scontato non dà diritto all'accesso.</span>
+      </p>
     </div>
   </div>
 </section>
@@ -625,7 +670,7 @@ footer a{color:#B9B3DA}
       <li><span class="t">14:35</span><span>Tecniche di comunicazione con Katia Burdet, relazioni internazionali con Giuseppe Palma, + 2 sessioni di Speed Meeting.</span></li>
       <li><span class="t">16:20</span><span><strong>Sessione MigaMATCH e intelligenza artificiale nelle relazioni</strong>, seguita da altre 2 sessioni di Speed Meeting.</span></li>
       <li><span class="t">17:55</span><span>Intervento finale su come essere memorabili, recap, premiazioni e chiusura.</span></li>
-      <li><span class="t">19:30</span><span>Apericena riservato e open networking finale <em>(29,90 € — da acquistare a parte)</em>.</span></li>
+      <li><span class="t">19:30</span><span><strong>Apericena esclusivo</strong> e open networking finale: apericena, bollicine e organizzazione del match making a cura di MigaMATCH <em>(49,90 € — da acquistare a parte)</em>.</span></li>
     </ul>
     <p style="font-size:.87rem;color:#A9A3CE;margin-top:20px"><em>Programma in via di definizione: gli orari possono subire lievi variazioni.</em></p>
   </div>
@@ -720,7 +765,6 @@ footer a{color:#B9B3DA}
     <ul class="bul">
       <li><strong>42 incontri calcolati, non 42 incontri casuali.</strong> Persone selezionate da 4 milioni di parametri perché possono davvero servirti — e a cui tu puoi davvero servire.</li>
       <li><strong>La mappa di chi può presentarti i tuoi clienti.</strong> Esci sapendo esattamente chi, in quella sala, ha la chiave dei settori che ti interessano.</li>
-      <li><strong>Il certificato di Segnalatore d'Opportunità.</strong> Abilitante per l'iscrizione al Registro riconosciuto dalla legge 4/2013 del Ministero delle Imprese e del Made in Italy. Da mettere su LinkedIn e nel curriculum.</li>
       <li><strong>Formazione vera sull'arte delle relazioni.</strong> Tecniche contro-intuitive di ingegneria relazionale, alternate alla palestra continua degli speed meeting.</li>
       <li><strong>Il Motore della Reciprocità.</strong> Aiuti un'azienda partner a chiudere un affare, e quell'azienda è istruita per ricambiarti con un contatto chiave.</li>
       <li><strong>Una fonte di reddito nuova.</strong> Per ogni affare concluso è previsto un ritorno economico: in denaro o in buoni merce.</li>
@@ -739,7 +783,7 @@ footer a{color:#B9B3DA}
     <div class="narrow" style="text-align:center">
       <p class="kicker">Milano · Sabato 17 Ottobre 2026</p>
       <h2>Prendi il tuo posto<br>al tavolo giusto</h2>
-      <p class="lead">Il biglietto intero è <strong>199 €</strong>. Ma i posti sono 300 e il prezzo
+      <p class="lead">Il biglietto intero è <strong>199 €</strong>. Ma i posti sono 350 e il prezzo
         sale man mano che la sala si riempie. Più aspetti, più paghi. È l'unica regola.</p>
     </div>
 
@@ -763,7 +807,8 @@ footer a{color:#B9B3DA}
         SÌ, VOGLIO IL MIO POSTO A 159 € →
       </a>
       <p class="btn-sub">Pranzo incluso · 42 incontri garantiti · App MigaMATCH inclusa<br>
-        <strong>Lettori Economy: usa il codice ECONOMY20 per il 20% di sconto</strong></p>
+        <strong>Lettori Economy: codice ECONOMY20 per il 20% di sconto</strong><br>
+        <span style="font-size:.78rem">Il codice va dimostrato alla cassa con copia cartacea o foto della rivista.</span></p>
     </div>
 
     <div class="narrow card" style="background:#fff;margin-top:16px">
@@ -773,7 +818,6 @@ footer a{color:#B9B3DA}
         <li><strong>Il pranzo esperienziale</strong> Referral Tasting con networking a tavola</li>
         <li>Tutti gli interventi formativi sull'ingegneria relazionale</li>
         <li>L'accesso all'<strong>app MigaMATCH</strong> con il tuo profilo e i tuoi match</li>
-        <li>Il <strong>certificato di Segnalatore d'Opportunità</strong></li>
         <li>L'accesso al canale Telegram esclusivo per conoscersi già prima dell'evento</li>
       </ul>
     </div>
@@ -787,8 +831,24 @@ footer a{color:#B9B3DA}
     <h2>Domande legittime</h2>
 
     <details open>
-      <summary>Ho già provato altri eventi di networking. Perché questo dovrebbe essere diverso?</summary>
-      <p>Perché in tutti gli altri il tuo posto a sedere è una casualità, e in questo è il risultato di
+      <summary>Ho già provato un altro Forum Connections. Perché questo è diverso?</summary>
+      <p>Rispetto alle altre edizioni <strong>questa è la prima organizzata con l'app MigaMATCH</strong>.
+        Per chi ci segue e l'ha già scaricata il salto quantico si capisce subito.
+        Se hai dubbi, <strong>scarica l'app e provala</strong>: ti regala un match immediato e di qualità.
+        Poi immagina cosa farà dal vivo, con le 42 persone che ti farà incontrare in una sola giornata.</p>
+    </details>
+
+    <details>
+      <summary>Come faccio ad arrivare preparato invece che improvvisare?</summary>
+      <p>Dentro l'app MigaMATCH c'è una <strong>potente Academy</strong> che ti porta all'evento nella
+        forma migliore: <strong>micro-lezioni da massimo 5 minuti</strong>, ad alto valore aggiunto.
+        Niente corsi da venti ore che non finirai mai. Cinque minuti alla volta, quando hai cinque minuti,
+        e arrivi al 17 ottobre sapendo esattamente cosa dire nei tre round e come sfruttarli.</p>
+    </details>
+
+    <details>
+      <summary>Perché non dovrebbe essere il solito evento di networking?</summary>
+      <p>Perché in tutti gli altri il tuo posto a sedere è una casualità, e qui è il risultato di
         oltre 4 milioni di parametri incrociati. È l'unica differenza che conta davvero — e cambia tutto.
         A Rimini il 99,1% dei partecipanti ha ottenuto almeno una connessione di valore e l'87,8% ne ha
         ottenute almeno dieci. Non sono percentuali che si ottengono per caso.</p>
@@ -830,14 +890,18 @@ footer a{color:#B9B3DA}
       <summary>159 € più il sabato. Ne vale la pena?</summary>
       <p>Fai il conto al contrario: quanto ti costa oggi un lead qualificato? E quanti ne generi
         in una giornata di lavoro normale? Qui parliamo di 42 incontri selezionati algoritmicamente,
-        pranzo incluso, formazione inclusa, app inclusa, certificato incluso. Se anche uno solo
+        pranzo incluso, formazione inclusa, app inclusa. Se anche uno solo
         di quei 42 ti apre una porta, il conto è chiuso.</p>
     </details>
 
     <details>
       <summary>Sono un lettore di Economy. Come uso lo sconto?</summary>
       <p>Inserisci il codice <strong>ECONOMY20</strong> al momento dell'acquisto: applica
-        il 20% di sconto sul prezzo in vigore in quel momento.</p>
+        il 20% di sconto sul prezzo in vigore in quel momento. Attenzione a una condizione:
+        <strong>il codice va dimostrato all'ingresso</strong>. Presentati alla cassa con una copia
+        cartacea di Economy oppure con una foto della rivista. Senza prova il biglietto scontato
+        non dà diritto all'accesso — è la regola concordata con la testata per riservare
+        davvero lo sconto ai suoi lettori.</p>
     </details>
 
     <details>
@@ -862,12 +926,12 @@ footer a{color:#B9B3DA}
       <a href="https://www.forumconnections.com/free-ticket/" class="btn big" data-cta="checkout">
         PRENDI IL TUO POSTO — 159 € →
       </a>
-      <p class="btn-sub" style="color:#A9A3CE">300 posti · pranzo incluso · codice ECONOMY20 per i lettori Economy</p>
+      <p class="btn-sub" style="color:#A9A3CE">350 posti · pranzo incluso · codice ECONOMY20 per i lettori Economy</p>
     </div>
 
     <div class="quote" style="text-align:left;max-width:640px;margin:40px auto 0">
       <strong>P.S.</strong> — Il prezzo sale il 1° settembre e poi ancora il 1° ottobre.
-      Non è una tattica: è che i 300 posti si riempiono e ogni posto in più vale di più,
+      Non è una tattica: è che i 350 posti si riempiono e ogni posto in più vale di più,
       perché ogni persona che si aggiunge aumenta le combinazioni possibili per tutti gli altri.
       Chi entra prima paga meno e sceglie meglio.
     </div>
@@ -899,7 +963,7 @@ footer a{color:#B9B3DA}
     <p style="font-size:.78rem;opacity:.7;margin-top:20px">
       I dati del tool «Chi può aprirti le porte» provengono da un'estrazione aggregata e anonima
       della rete MigaMATCH del 17 agosto 2026 (2.142 profili qualificati). Nessun dato personale
-      è esposto in questa pagina. I numeri della rete non coincidono con i 300 partecipanti dell'evento:
+      è esposto in questa pagina. I numeri della rete non coincidono con i 350 partecipanti dell'evento:
       indicano il bacino da cui i partecipanti provengono.</p>
   </div>
 </footer>
@@ -933,6 +997,65 @@ const sticky = document.getElementById('sticky');
 addEventListener('scroll', () => {
   sticky.classList.toggle('on', scrollY > 900);
 }, {passive:true});
+
+/* ---------- TESTIMONIANZE ----------
+   Video presi dal sito precedente, raggruppati come li aveva raggruppati la vecchia home.
+   Caricamento on-click: senza facciata sarebbero 20 iframe aperti tutti insieme.        */
+const TESTIMONIANZE = {
+  'tg-aira': [
+    {t:'yt', id:'TxyZh9w3rDE', who:'Michele Chiericozzi'},
+    {t:'yt', id:'yCfsInTNRjg', who:'Roberto Venanzoni'},
+    {t:'yt', id:'kNXbPRoiu3k', who:'Simona Baracico'},
+    {t:'yt', id:'dj5hETVPFoo', who:'Sandro Cottarelli'},
+    {t:'yt', id:'pla2O2r6TBA', who:'Chitrakshi Shetty'},
+    {t:'yt', id:'L6k-yX3fV9U', who:'Gianmaria Montacchini'}
+  ],
+  'tg-giornata': [
+    {t:'yt', id:'38QwKzKUwmI', who:'Flavia Fiori'},
+    {t:'vm', id:'929142492',   who:'Emanuele Properzi — Bookness'},
+    {t:'vm', id:'989952292',   who:'Giacomo Bruno'},
+    {t:'vm', id:'929030558',   who:'La vision — Torino 2024'}
+  ],
+  'tg-formatori': [
+    {t:'yt', id:'_NtUNdpTcvk', who:'Oscar Dalvit — Ingegneria Relazionale'},
+    {t:'yt', id:'u9D3TD6oc3k', who:'Giuseppe Tringali — Hai solo 60 secondi'},
+    {t:'yt', id:'MrVyDNGmv2U', who:'Walter Klinkon — Le relazioni sono un’arte'},
+    {t:'yt', id:'IT2DhOf1iY0', who:'Gianluca Lo Stimolo — Farsi ricordare'},
+    {t:'yt', id:'RCeoGP1NfS4', who:'Giuseppe Palma — Dall’Italia all’Europa'},
+    {t:'yt', id:'Mk-s9Ggmbv0', who:'Savino Novelli — Le relazioni come motore'},
+    {t:'yt', id:'63ddvqRf540', who:'Lisa Marie Gelhaus — Il gancio'},
+    {t:'vm', id:'1124648070',  who:'Andrea Pietrini — YourGroup'},
+    {t:'vm', id:'1132170294',  who:'Katia Burdet e Giuseppe Tringali'}
+  ]
+};
+
+Object.entries(TESTIMONIANZE).forEach(([box, lista]) => {
+  const host = document.getElementById(box);
+  if (!host) return;
+  lista.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'vid';
+    const poster = v.t === 'yt'
+      ? `background-image:url('https://i.ytimg.com/vi/${v.id}/hqdefault.jpg')` : '';
+    card.innerHTML =
+      `<div class="ratio">
+         <button class="play" style="${poster}" aria-label="Guarda: ${v.who}">
+           <span class="tri"></span><span class="who">${v.who}</span>
+         </button>
+       </div>
+       <div class="cap">${v.who}</div>`;
+    card.querySelector('.play').addEventListener('click', e => {
+      const src = v.t === 'yt'
+        ? `https://www.youtube.com/embed/${v.id}?autoplay=1`
+        : `https://player.vimeo.com/video/${v.id}?autoplay=1`;
+      const f = document.createElement('iframe');
+      f.src = src; f.title = v.who; f.allow = 'autoplay; fullscreen';
+      f.allowFullscreen = true;
+      e.currentTarget.replaceWith(f);
+    });
+    host.appendChild(card);
+  });
+});
 
 /* ---------- TOOL ---------- */
 const sel = new Set();
@@ -1018,7 +1141,7 @@ function render(){
       Il numero grande è una stima prudente: prendiamo il valore dell'area più popolata invece di sommare,
       perché la stessa persona ha spesso influenza in più settori e sommare gonfierebbe il dato.
       Estrazione aggregata e anonima della rete MigaMATCH al 17 agosto 2026 (2.142 profili qualificati):
-      è il bacino da cui vengono selezionati i 300 partecipanti dell'evento.
+      è il bacino da cui vengono selezionati i 350 partecipanti dell'evento.
     </p>`;
 }
 </script>
