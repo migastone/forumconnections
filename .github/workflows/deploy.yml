@@ -1,0 +1,84 @@
+name: Deploy FTP
+
+# Deploy automatico della landing su FTP.
+#
+# - push su main che tocca landing-milano-2026/  -> deploy sulla cartella di produzione
+#   (secret FTP_SERVER_DIR)
+# - avvio manuale (workflow_dispatch)            -> puoi scegliere una cartella diversa,
+#   per esempio una sottocartella di prova, senza toccare la produzione
+#
+# Nota: nessun trigger su pull_request. Il repository e' pubblico e i secret non devono
+# essere raggiungibili da una PR aperta da un fork.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'landing-milano-2026/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Cartella FTP di destinazione (vuoto = quella di produzione nel secret)"
+        required: false
+        default: ''
+      dry_run:
+        description: "Solo simulazione: elenca i file senza caricarli"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: deploy-ftp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica il repository
+        uses: actions/checkout@v4
+
+      - name: Decidi la cartella di destinazione
+        id: dest
+        run: |
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            echo "dir=${{ github.event.inputs.target }}" >> "$GITHUB_OUTPUT"
+            echo "Destinazione (scelta a mano): ${{ github.event.inputs.target }}"
+          else
+            echo "dir=${{ secrets.FTP_SERVER_DIR }}" >> "$GITHUB_OUTPUT"
+            echo "Destinazione: cartella di produzione dal secret"
+          fi
+
+      - name: Controlla che la landing sia integra
+        run: |
+          test -f landing-milano-2026/index.html || { echo "manca index.html"; exit 1; }
+          test -f landing-milano-2026/assets/dati-rete.js || { echo "manca dati-rete.js"; exit 1; }
+          echo "File da pubblicare: $(find landing-milano-2026 -type f | wc -l)"
+          echo "Peso totale: $(du -sh landing-milano-2026 | cut -f1)"
+
+      - name: Marca la versione pubblicata
+        run: |
+          printf '%s\n' \
+            "commit: ${{ github.sha }}" \
+            "ramo: ${{ github.ref_name }}" \
+            "pubblicato: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" \
+            > landing-milano-2026/VERSIONE.txt
+          cat landing-milano-2026/VERSIONE.txt
+
+      - name: Carica via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./landing-milano-2026/
+          server-dir: ${{ steps.dest.outputs.dir }}
+          dry-run: ${{ github.event.inputs.dry_run == 'true' }}
+          # Il file di stato serve all'action per caricare solo cio' che e' cambiato.
+          state-name: .ftp-deploy-sync-state.json
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.DS_Store
