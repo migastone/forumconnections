@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Liste contatti / dati personali — non versionare
+*.xlsx
+*.xls
+*.csv
+
+# Ambiente
+.env
+.env.*
+*.pem
+
+# Materiale interno Migastone — NON pubblicare (repo pubblico)
+docs-migamatch/
+CLAUDE-MIGAMATCH.md
