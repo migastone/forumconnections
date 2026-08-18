@@ -1222,5 +1222,69 @@ function render(){
     </p>`;
 }
 </script>
+
+<script>
+/* ─────────── Passaggio dei parametri di tracciamento al checkout ───────────
+   Qualunque UTM o click-id arrivi sulla landing viene raccolto e riattaccato
+   al link dello Store MigaMATCH, cosi' la conversione resta attribuita alla
+   campagna che l'ha generata anche se l'acquisto avviene su un altro dominio. */
+(() => {
+  const CHIAVI = [
+    // campagne
+    'utm_source','utm_medium','utm_campaign','utm_term','utm_content','utm_id',
+    'utm_source_platform','utm_creative_format','utm_marketing_tactic',
+    // identificativi di clic delle piattaforme pubblicitarie
+    'fbclid',   // Meta / Facebook / Instagram
+    'gclid','gbraid','wbraid',  // Google Ads (wbraid/gbraid = iOS senza consenso)
+    'msclkid','ttclid','li_fat_id','twclid','epik','sccid',
+    // referral interni
+    'ref','referrer'
+  ];
+  const STORE = 'fc_tracciamento';
+
+  /* 1 · raccogli quello che arriva ora e ricordalo per tutta la sessione:
+        l'utente puo' navigare la pagina prima di cliccare, e i parametri
+        non devono perdersi per strada */
+  const inArrivo = new URLSearchParams(location.search);
+  let salvati = {};
+  try { salvati = JSON.parse(sessionStorage.getItem(STORE) || '{}'); } catch (e) {}
+  let cambiato = false;
+  CHIAVI.forEach(k => {
+    const v = (inArrivo.get(k) || '').trim();
+    if (v && salvati[k] !== v) { salvati[k] = v; cambiato = true; }
+  });
+  if (cambiato) { try { sessionStorage.setItem(STORE, JSON.stringify(salvati)); } catch (e) {} }
+
+  const cookie = n => (document.cookie.match('(^|;)\\s*' + n + '\\s*=\\s*([^;]+)') || [])[2];
+
+  const arricchisci = (href) => {
+    let u;
+    try { u = new URL(href, location.href); } catch (e) { return href; }
+    // mai sovrascrivere cio' che e' gia' sul link, a partire da sku
+    Object.keys(salvati).forEach(k => {
+      if (!u.searchParams.has(k)) u.searchParams.set(k, salvati[k]);
+    });
+    // cookie del pixel Meta, se e quando un pixel li avra' scritti
+    ['_fbp','_fbc'].forEach(n => {
+      const v = cookie(n);
+      if (v && !u.searchParams.has(n)) u.searchParams.set(n, v);
+    });
+    // sorgente comunque tracciata, anche sul traffico diretto senza UTM
+    if (!u.searchParams.has('src')) u.searchParams.set('src', 'landing-milano-2026');
+    return u.toString();
+  };
+
+  const CHECKOUT = 'a[href*="auto.migamatch.com"]';
+  const aggiorna = () => document.querySelectorAll(CHECKOUT)
+                           .forEach(a => { a.href = arricchisci(a.href); });
+
+  aggiorna();  // subito, cosi' l'URL e' corretto anche col tasto centrale o "copia indirizzo"
+  // e di nuovo al clic: un pixel puo' aver scritto i cookie dopo il caricamento
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest(CHECKOUT);
+    if (a) a.href = arricchisci(a.href);
+  }, true);
+})();
+</script>
 </body>
 </html>
