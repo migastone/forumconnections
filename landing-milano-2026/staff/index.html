@@ -1,0 +1,553 @@
+<meta charset="utf-8">
+<title>Ricontatti — Forum Connections</title>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="googlebot" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/assets/img/logo-fc-simbolo.png">
+
+<style>
+:root{
+  --navy:#1B1450; --navy-2:#241B63; --ink:#14122B; --gold:#EFC75E; --gold-dk:#C9A03C;
+  --bg:#F4F4F8; --card:#fff; --bordo:#E2E1EC; --testo:#26243F; --tenue:#7C7898;
+  --rosso:#D64545; --arancio:#E08A2E; --giallo:#D9C13A; --verde:#3E9E63; --grigio:#9B98AE;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--testo);font-size:15px;line-height:1.45}
+button,input,select,textarea{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+.nascosto{display:none!important}
+
+/* ---------- accesso ---------- */
+#accesso{min-height:100vh;display:grid;place-items:center;background:var(--navy);padding:20px}
+.box{background:var(--card);border-radius:14px;padding:36px 32px;width:100%;max-width:400px;
+     box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.box h1{margin:0 0 4px;font-size:1.28rem}
+.box p.sub{margin:0 0 22px;color:var(--tenue);font-size:.9rem}
+.campo{width:100%;padding:11px 13px;border:1px solid var(--bordo);border-radius:9px;margin-bottom:12px;
+       background:#fff;color:var(--testo)}
+.campo:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:transparent}
+#codice{letter-spacing:.5em;text-align:center;font-size:1.5rem;font-weight:700;padding:14px}
+.btn{width:100%;padding:12px;border:0;border-radius:9px;background:var(--navy);color:#fff;font-weight:700}
+.btn:hover{background:var(--navy-2)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.oro{background:var(--gold);color:var(--ink)}
+.btn.oro:hover{background:var(--gold-dk)}
+.avviso{margin:12px 0 0;padding:10px 12px;border-radius:8px;font-size:.87rem}
+.avviso.err{background:#FDECEC;color:#98292E;border:1px solid #F3C9C9}
+.avviso.ok{background:#EAF6EF;color:#245F3D;border:1px solid #C6E5D3}
+.link{background:none;border:0;color:var(--gold-dk);text-decoration:underline;padding:0;width:auto;font-size:.87rem}
+
+/* ---------- struttura ---------- */
+header{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-items:center;gap:18px;
+       flex-wrap:wrap;position:sticky;top:0;z-index:30}
+header .marchio{font-weight:800;letter-spacing:.03em}
+header .marchio span{color:var(--gold)}
+.kpi{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;align-items:center}
+.kpi div{text-align:center;min-width:62px}
+.kpi b{display:block;font-size:1.12rem;line-height:1.1}
+.kpi small{color:#B9B4D8;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+.chi{font-size:.82rem;color:#B9B4D8}
+
+.barra{background:#fff;border-bottom:1px solid var(--bordo);padding:10px 18px;display:flex;gap:8px;
+       flex-wrap:wrap;align-items:center;position:sticky;top:52px;z-index:20}
+.barra select,.barra input{padding:7px 10px;border:1px solid var(--bordo);border-radius:7px}
+.barra input[type=search]{min-width:210px}
+main{padding:16px 18px 60px}
+.conteggio{color:var(--tenue);font-size:.85rem;margin:0 0 10px}
+
+/* ---------- lista ---------- */
+.riga{background:#fff;border:1px solid var(--bordo);border-left:5px solid var(--grigio);
+      border-radius:10px;padding:11px 14px;margin-bottom:7px;display:flex;gap:14px;align-items:center;
+      cursor:pointer}
+.riga:hover{border-color:var(--gold);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.riga.u-scaduto{border-left-color:var(--rosso)}
+.riga.u-oggi{border-left-color:var(--arancio)}
+.riga.u-settimana{border-left-color:var(--giallo)}
+.riga.u-chiuso{border-left-color:var(--verde)}
+.riga .chi-nome{font-weight:700}
+.riga .meta{color:var(--tenue);font-size:.84rem}
+.riga .destra{margin-left:auto;text-align:right;font-size:.82rem;color:var(--tenue);white-space:nowrap}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.72rem;font-weight:700;
+      background:#EFEEF6;color:#514D77;margin-left:6px;vertical-align:middle}
+.pill.crm{background:#FFF3D6;color:#8A6410}
+.atti{font-size:1rem;letter-spacing:2px}
+
+/* ---------- scheda ---------- */
+.velo{position:fixed;inset:0;background:rgba(12,10,30,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.scheda{background:#fff;border-radius:14px;width:100%;max-width:860px;max-height:92vh;overflow:auto}
+.scheda header{position:sticky;top:0;background:var(--navy);border-radius:14px 14px 0 0}
+.corpo{padding:18px}
+.recap{background:#F7F7FB;border:1px solid var(--bordo);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.9rem}
+.recap b{color:var(--ink)}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:.8rem;font-weight:700;color:var(--tenue);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
+textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);border-radius:9px;resize:vertical}
+.cronometro{font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
+.cronometro.allarme{color:var(--rosso)}
+.azioni{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.azioni .btn{width:auto;padding:10px 16px}
+.contatore{font-size:.78rem;color:var(--tenue);text-align:right}
+.contatore.corto{color:var(--rosso);font-weight:700}
+@media(max-width:700px){.griglia{grid-template-columns:1fr}.kpi{width:100%;justify-content:space-between}}
+</style>
+
+<!-- ══════════════════ ACCESSO ══════════════════ -->
+<div id="accesso">
+  <div class="box">
+    <h1>Ricontatti Forum Connections</h1>
+    <p class="sub">Accesso riservato. Ti arriva un codice via email.</p>
+
+    <div id="passo-email">
+      <input class="campo" id="email" type="email" placeholder="nome@migastone.com" autocomplete="email">
+      <button class="btn" id="chiedi">Invia il codice</button>
+    </div>
+
+    <div id="passo-codice" class="nascosto">
+      <p class="sub" style="margin-bottom:10px">Codice inviato a <b id="dove"></b></p>
+      <input class="campo" id="codice" inputmode="numeric" autocomplete="one-time-code" placeholder="·····" maxlength="8">
+      <button class="btn oro" id="entra">Entra</button>
+      <p style="text-align:center;margin:12px 0 0">
+        <button class="link" id="indietro">Cambia indirizzo</button> ·
+        <button class="link" id="rinvia">Rinvia</button>
+      </p>
+    </div>
+
+    <div id="avviso-accesso"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ APPLICAZIONE ══════════════════ -->
+<div id="app" class="nascosto">
+  <header>
+    <span class="marchio">FORUM <span>RICONTATTI</span></span>
+    <span class="chi" id="chi"></span>
+    <div class="kpi" id="kpi"></div>
+    <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
+    <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
+  </header>
+
+  <div class="barra">
+    <input type="search" id="cerca" placeholder="Nome, email o telefono…">
+    <select id="f-fascia"><option value="">Tutte le fasce</option></select>
+    <select id="f-urgenza">
+      <option value="">Tutte le urgenze</option>
+      <option value="scaduto">Scaduti</option>
+      <option value="oggi">Oggi</option>
+      <option value="settimana">Questa settimana</option>
+      <option value="da_contattare">Da contattare</option>
+    </select>
+    <select id="f-stato"><option value="">Tutti gli stati</option></select>
+    <button class="btn" style="width:auto;padding:7px 14px" id="ricarica">Aggiorna</button>
+  </div>
+
+  <main>
+    <p class="conteggio" id="conteggio">Carico…</p>
+    <div id="lista"></div>
+    <div style="text-align:center;margin-top:14px">
+      <button class="btn" style="width:auto;padding:10px 22px" id="altri">Mostra altri</button>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ═══════════════ configurazione ═══════════════
+   La chiave qui sotto e la chiave PUBBLICA (anon): e fatta per stare nel browser.
+   Non apre nulla da sola — ogni dato passa dalla Edge Function, che verifica il
+   token e controlla che chi chiama sia un operatore attivo della campagna.      */
+const URL_SUPA = 'https://eywxidahsumzrlzwnfev.supabase.co';
+const CHIAVE   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5d3hpZGFoc3VtenJsenduZmV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNzcyNzMsImV4cCI6MjA4Njc1MzI3M30.visQEcLDoCl3mEwDqRzFhUowOhipKJybH_HiVkIQv-I';
+const API      = URL_SUPA + '/functions/v1/ricontatti-api';
+const DEPOSITO = 'fc_ricontatti_sessione';
+
+const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non può venire',
+               'Acquistato','Da NON chiamare','Altro operatore','Altro'];
+const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
+                   'deve decidere con socio','ha già partecipato senza concludere',
+                   'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
+/* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
+const CONNESSI = new Set(['Ci pensa','Viene','Non può venire','Acquistato','Da NON chiamare','Altro operatore','Altro']);
+
+let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
+
+/* ═══════════════ utilità ═══════════════ */
+const $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dataOra = v => v ? new Date(v).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+function avviso(dove, testo, tipo='err'){
+  $(dove).innerHTML = testo ? `<p class="avviso ${tipo}">${esc(testo)}</p>` : '';
+}
+
+function salvaSessione(s){
+  sessione = s;
+  try{ localStorage.setItem(DEPOSITO, JSON.stringify(s)); }catch(e){}
+}
+function scordaSessione(){
+  sessione = null; io = null;
+  try{ localStorage.removeItem(DEPOSITO); }catch(e){}
+}
+
+/* ═══════════════ accesso con codice via email ═══════════════ */
+async function chiediCodice(email){
+  const r = await fetch(URL_SUPA + '/auth/v1/otp', {
+    method:'POST',
+    headers:{'apikey':CHIAVE,'Content-Type':'application/json'},
+    /* create_user: chi e in ricontatti.operatori puo non avere ancora un account.
+       Crearlo non da accesso a nulla: il cancello e la Edge Function.            */
+    body: JSON.stringify({ email, create_user:true })
+  });
+  if(!r.ok){
+    const d = await r.json().catch(()=>({}));
+    throw new Error(d.msg || d.error_description || 'Non riesco a inviare il codice.');
+  }
+}
+
+async function verificaCodice(email, token){
+  const r = await fetch(URL_SUPA + '/auth/v1/verify', {
+    method:'POST',
+    headers:{'apikey':CHIAVE,'Content-Type':'application/json'},
+    body: JSON.stringify({ email, token, type:'email' })
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok || !d.access_token) throw new Error(d.msg || d.error_description || 'Codice non valido o scaduto.');
+  return d;
+}
+
+async function rinnova(){
+  if(!sessione?.refresh_token) return false;
+  const r = await fetch(URL_SUPA + '/auth/v1/token?grant_type=refresh_token', {
+    method:'POST', headers:{'apikey':CHIAVE,'Content-Type':'application/json'},
+    body: JSON.stringify({ refresh_token: sessione.refresh_token })
+  });
+  if(!r.ok) return false;
+  const d = await r.json();
+  if(!d.access_token) return false;
+  salvaSessione(d);
+  return true;
+}
+
+/* ═══════════════ chiamate all'API ═══════════════ */
+async function api(percorso, opzioni = {}, secondoTentativo = false){
+  const r = await fetch(API + percorso, {
+    ...opzioni,
+    headers:{
+      'Authorization':'Bearer ' + (sessione?.access_token ?? ''),
+      'apikey':CHIAVE,
+      'Content-Type':'application/json',
+      ...(opzioni.headers || {})
+    }
+  });
+  if(r.status === 403 && !secondoTentativo){
+    /* puo essere solo il token scaduto: si prova a rinnovarlo una volta sola */
+    if(await rinnova()) return api(percorso, opzioni, true);
+  }
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok){
+    if(r.status === 403 && secondoTentativo){ esci(); }
+    throw new Error(d.errore || 'Errore imprevisto.');
+  }
+  return d;
+}
+
+/* ═══════════════ avvio ═══════════════ */
+$('#chiedi').onclick = async () => {
+  const email = $('#email').value.trim().toLowerCase();
+  if(!email.includes('@')) return avviso('#avviso-accesso','Serve un indirizzo email valido.');
+  $('#chiedi').disabled = true; avviso('#avviso-accesso','Invio il codice…','ok');
+  try{
+    await chiediCodice(email);
+    $('#dove').textContent = email;
+    $('#passo-email').classList.add('nascosto');
+    $('#passo-codice').classList.remove('nascosto');
+    avviso('#avviso-accesso','Controlla la posta. Il codice scade dopo pochi minuti.','ok');
+    $('#codice').focus();
+  }catch(e){ avviso('#avviso-accesso', e.message); }
+  $('#chiedi').disabled = false;
+};
+
+$('#indietro').onclick = () => {
+  $('#passo-codice').classList.add('nascosto');
+  $('#passo-email').classList.remove('nascosto');
+  avviso('#avviso-accesso','');
+};
+$('#rinvia').onclick = () => { $('#chiedi').click(); };
+
+$('#entra').onclick = async () => {
+  const email = $('#dove').textContent, token = $('#codice').value.replace(/\D/g,'');
+  if(token.length < 4) return avviso('#avviso-accesso','Inserisci il codice che hai ricevuto.');
+  $('#entra').disabled = true; avviso('#avviso-accesso','Verifico…','ok');
+  try{
+    salvaSessione(await verificaCodice(email, token));
+    await entra();
+  }catch(e){ avviso('#avviso-accesso', e.message); }
+  $('#entra').disabled = false;
+};
+$('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
+$('#email').addEventListener('keydown', e => { if(e.key==='Enter') $('#chiedi').click(); });
+
+async function entra(){
+  try{
+    io = await api('/login', { method:'POST', body:'{}' });
+  }catch(e){
+    scordaSessione();
+    return avviso('#avviso-accesso', e.message);
+  }
+  $('#accesso').classList.add('nascosto');
+  $('#app').classList.remove('nascosto');
+  $('#chi').textContent = io.nome + (io.ruolo === 'admin' ? ' · amministratore'
+                          : io.linea_migasender ? ' · linea ' + io.linea_migasender : '');
+  ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
+  await Promise.all([caricaCoda(true), caricaKpi()]);
+}
+
+function esci(){ scordaSessione(); location.reload(); }
+$('#esci').onclick = esci;
+
+/* ═══════════════ coda ═══════════════ */
+function classeUrgenza(u){
+  if(!u) return '';
+  if(/scadut|ritard/i.test(u)) return 'u-scaduto';
+  if(/oggi/i.test(u))          return 'u-oggi';
+  if(/settimana/i.test(u))     return 'u-settimana';
+  if(/chius|acquist|positiv/i.test(u)) return 'u-chiuso';
+  return '';
+}
+
+async function caricaCoda(azzera = false){
+  if(azzera) pagina = 0;
+  const p = new URLSearchParams({ limite:'50', scarto:String(pagina*50) });
+  if($('#cerca').value.trim()) p.set('ricerca', $('#cerca').value.trim());
+  if($('#f-fascia').value)     p.set('fascia',  $('#f-fascia').value);
+  if($('#f-urgenza').value)    p.set('urgenza', $('#f-urgenza').value);
+  if($('#f-stato').value)      p.set('stato',   $('#f-stato').value);
+
+  try{
+    const d = await api('/coda?' + p);
+    ultimoTotale = d.totale;
+    if(azzera){
+      $('#lista').innerHTML = '';
+      const viste = new Set([...$('#f-fascia').options].map(o=>o.value));
+      d.righe.forEach(r => { if(r.fascia && !viste.has(r.fascia)){
+        viste.add(r.fascia);
+        $('#f-fascia').insertAdjacentHTML('beforeend', `<option>${esc(r.fascia)}</option>`);
+      }});
+    }
+    $('#conteggio').textContent =
+      `${d.totale.toLocaleString('it-IT')} contatti in coda · mostrati ${Math.min((pagina+1)*50, d.totale)} · ${d.ms} ms`;
+    $('#lista').insertAdjacentHTML('beforeend', d.righe.map(riga).join(''));
+    $('#altri').style.display = (pagina+1)*50 >= d.totale ? 'none' : '';
+  }catch(e){ $('#conteggio').textContent = 'Errore: ' + e.message; }
+}
+
+function riga(r){
+  const atti = (r.atto1 ? '🖥️' : '') + (r.atto2 ? '🤝' : '');
+  return `<div class="riga ${classeUrgenza(r.urgenza)}" data-id="${r.id}">
+    <div>
+      <div class="chi-nome">${esc([r.nome,r.cognome].filter(Boolean).join(' ')) || '(senza nome)'}
+        <span class="atti">${atti}</span>
+        ${r.crm_consulente ? `<span class="pill crm">CRM · ${esc(r.crm_consulente)}</span>` : ''}
+        ${r.profilato ? '<span class="pill">profilato</span>' : ''}</div>
+      <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
+    </div>
+    <div class="destra">
+      <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b></div>
+      <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
+    </div>
+  </div>`;
+}
+
+$('#lista').addEventListener('click', e => {
+  const r = e.target.closest('.riga');
+  if(r) apriScheda(Number(r.dataset.id));
+});
+$('#altri').onclick = () => { pagina++; caricaCoda(false); };
+$('#ricarica').onclick = () => caricaCoda(true);
+$('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange = () => caricaCoda(true);
+let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTimeout(()=>caricaCoda(true), 300); };
+
+/* ═══════════════ KPI ═══════════════ */
+async function caricaKpi(){
+  try{
+    const d = await api('/kpi');
+    const oggi = (d.operatore || []).filter(x => (x.giorno || '').slice(0,10) === new Date().toISOString().slice(0,10));
+    const somma = c => oggi.reduce((t,x) => t + Number(x[c] || 0), 0);
+    const fatte = somma('chiamate'), connesse = somma('connesse'), chiuse = somma('chiuse');
+    $('#kpi').innerHTML = `
+      <div><b>${fatte}</b><small>chiamate</small></div>
+      <div><b>${connesse}</b><small>risposte</small></div>
+      <div><b>${chiuse}</b><small>chiuse</small></div>
+      <div><b>${ultimoTotale.toLocaleString('it-IT')}</b><small>in coda</small></div>`;
+  }catch(e){ $('#kpi').innerHTML = `<div class="chi">KPI non disponibili</div>`; }
+}
+
+/* ═══════════════ scheda contatto ═══════════════ */
+async function apriScheda(id){
+  let d;
+  try{ d = await api('/contatto/' + id); }
+  catch(e){ return alert(e.message); }
+  const c = d.contatto, storico = d.chiamate || [];
+
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.innerHTML = `
+   <div class="scheda">
+    <header>
+      <span class="marchio">${esc([c.nome,c.cognome].filter(Boolean).join(' ')) || '(senza nome)'}</span>
+      <span class="chi">${esc(c.telefono || 'nessun telefono')}</span>
+      <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
+    </header>
+    <div class="corpo">
+
+      <div class="recap">
+        <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
+             ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
+             ${c.atto1?' · 🖥️ Atto 1':''}${c.atto2?' · 🤝 Atto 2':''}
+             ${c.profilato?' · profilato su MigaMATCH':''}</div>
+        ${c.crm_consulente ? `<div style="margin-top:5px">In trattativa CRM (<b>${esc(c.crm_stage||'')}</b>) seguita da
+             <b>${esc(c.crm_consulente)}</b>${c.crm_consulente===io.nome?' — sei tu':' — coordinati prima di chiamare'}.</div>`:''}
+        <div style="margin-top:5px">${c.n_chiamate||0} tentativi · ultimo esito <b>${esc(c.ultimo_esito||'Da Contattare')}</b>
+             ${c.ultima_chiamata_il?' il '+dataOra(c.ultima_chiamata_il):''}</div>
+        ${d.ultima_nota ? `<div style="margin-top:5px;color:var(--tenue)">Ultima nota: “${esc(d.ultima_nota.testo)}”</div>`:''}
+        ${c.note_origine ? `<div style="margin-top:5px;color:var(--tenue)">Storico: ${esc(c.note_origine)}</div>`:''}
+      </div>
+
+      <div class="azioni">
+        <button class="btn oro" data-avvia>Avvia chiamata</button>
+        <span class="cronometro" data-crono>05:00</span>
+        <button class="btn" data-wa ${c.telefono?'':'disabled'}>WhatsApp</button>
+      </div>
+
+      <div data-form class="nascosto">
+        <div class="griglia">
+          <div>
+            <label>Esito</label>
+            <select class="campo" data-esito>${ESITI.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label>Obiezione principale</label>
+            <select class="campo" data-obiezione><option value="">—</option>
+              ${OBIEZIONI.map(o=>`<option>${esc(o)}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label>Data di ricontatto</label>
+            <input class="campo" type="datetime-local" data-ricontatto>
+          </div>
+          <div>
+            <label>Profilazione promessa entro</label>
+            <input class="campo" type="date" data-profilazione>
+          </div>
+        </div>
+        <label>Note sulla chiamata</label>
+        <textarea data-note placeholder="Com'è andata: cosa ha detto, cosa serve ricordare la prossima volta…"></textarea>
+        <p class="contatore" data-contatore>0 caratteri</p>
+        <button class="btn oro" data-salva>Registra la chiamata</button>
+        <div data-avviso-scheda></div>
+      </div>
+
+      ${storico.length ? `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>
+        ${storico.map(s=>`<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
+          <b>${esc(s.esito||'—')}</b> · ${dataOra(s.iniziata_il)} · ${esc(s.operatore||'')}
+          ${s.durata_secondi?` · ${Math.round(s.durata_secondi/60)} min`:''}
+          ${s.note?`<div style="color:var(--tenue)">${esc(s.note)}</div>`:''}</div>`).join('')}`:''}
+    </div>
+   </div>`;
+  document.body.appendChild(velo);
+
+  const q = s => velo.querySelector(s);
+  let chiamataId = null, partita = null;
+
+  const chiudi = () => { if(cronometro) clearInterval(cronometro); cronometro = null; velo.remove(); };
+  q('[data-chiudi]').onclick = chiudi;
+  velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
+
+  /* avvio: registra l'inizio e fa partire il conto alla rovescia dei 5 minuti */
+  q('[data-avvia]').onclick = async () => {
+    q('[data-avvia]').disabled = true;
+    try{
+      const r = await api('/chiamata', { method:'POST',
+        body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
+      chiamataId = r.chiamata.id; partita = Date.now();
+      q('[data-form]').classList.remove('nascosto');
+      let resto = 300;
+      cronometro = setInterval(() => {
+        resto--;
+        const m = String(Math.floor(Math.abs(resto)/60)).padStart(2,'0'),
+              s = String(Math.abs(resto)%60).padStart(2,'0');
+        const el = q('[data-crono]');
+        el.textContent = (resto < 0 ? '+' : '') + m + ':' + s;
+        el.classList.toggle('allarme', resto <= 30);
+      }, 1000);
+    }catch(e){ alert(e.message); q('[data-avvia]').disabled = false; }
+  };
+
+  /* la nota diventa obbligatoria solo se la chiamata ha ricevuto risposta */
+  const aggiornaContatore = () => {
+    const n = q('[data-note]').value.trim().length;
+    const serve = CONNESSI.has(q('[data-esito]').value);
+    const el = q('[data-contatore]');
+    el.textContent = serve ? `${n} caratteri — minimo 20 perché la chiamata ha avuto risposta` : `${n} caratteri`;
+    el.classList.toggle('corto', serve && n < 20);
+  };
+  q('[data-note]').oninput = aggiornaContatore;
+  q('[data-esito]').onchange = aggiornaContatore;
+
+  q('[data-salva]').onclick = async () => {
+    const esito = q('[data-esito]').value, note = q('[data-note]').value.trim();
+    if(CONNESSI.has(esito) && note.length < 20)
+      return avviso('[data-avviso-scheda]','Con questo esito la nota è obbligatoria: servono almeno 20 caratteri.');
+    q('[data-salva]').disabled = true;
+    const corpo = {
+      esito, note: note || null,
+      obiezione: q('[data-obiezione]').value || null,
+      durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : null,
+      ricontatto_il: q('[data-ricontatto]').value ? new Date(q('[data-ricontatto]').value).toISOString() : null,
+      profilazione_promessa_il: q('[data-profilazione]').value || null
+    };
+    try{
+      await api('/chiamata/' + chiamataId, { method:'PATCH', body: JSON.stringify(corpo) });
+      chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+    }catch(e){
+      avviso('[data-avviso-scheda]', e.message);
+      q('[data-salva]').disabled = false;
+    }
+  };
+
+  q('[data-wa]').onclick = () => {
+    const n = (c.telefono||'').replace(/\D/g,'');
+    if(!n) return;
+    const testo = `Ciao ${c.nome||''}, sono ${io.nome} di ${marchioPer(c)}.`;
+    window.open(`https://wa.me/${n}?text=${encodeURIComponent(testo)}`, '_blank', 'noopener');
+  };
+}
+
+/* il marchio con cui ci si presenta cambia con la provenienza del contatto */
+function marchioPer(c){
+  const f = c.fonti || [];
+  if(f.some(x => String(x).startsWith('bigbang'))) return 'MigaMATCH';
+  return 'Segnalazione Vincente';
+}
+
+/* ═══════════════ pausa ═══════════════ */
+$('#pausa').onclick = async () => {
+  const fino = prompt('Pausa fino a quando? (giorno e ora, es. 2026-08-21 09:00)');
+  if(!fino) return;
+  const quando = new Date(fino.replace(' ','T'));
+  if(isNaN(quando)) return alert('Non ho capito la data.');
+  const motivo = prompt('Motivo (facoltativo)') || null;
+  try{
+    await api('/pausa', { method:'POST',
+      body: JSON.stringify({ inizio: new Date().toISOString(), fine: quando.toISOString(), motivo }) });
+    alert('Pausa registrata. Le tue scadenze slittano di conseguenza.');
+  }catch(e){ alert(e.message); }
+};
+
+/* ═══════════════ sessione già aperta ═══════════════ */
+(async () => {
+  try{ sessione = JSON.parse(localStorage.getItem(DEPOSITO) || 'null'); }catch(e){}
+  if(sessione?.access_token){
+    try{ await entra(); }
+    catch(e){ scordaSessione(); }
+  }
+})();
+</script>
