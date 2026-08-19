@@ -1,0 +1,65 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Widget di supporto WhatsApp — linguetta fissa sul lato destro.
+
+   Sta in un file a parte, caricato da tutte e tre le pagine pubbliche
+   (home, /aziende/, /upsell/), perche' e' l'unico modo di non ritrovarsi
+   tre copie che col tempo divergono: la home ha il CSS inline, le pagine
+   interne usano pagine-interne.css, quindi nessuno dei due file esistenti
+   era un posto buono per codice condiviso da tutte e tre.
+
+   Usa le variabili del design system (--navy, --gold, --sans) gia'
+   definite su :root sia nella home sia in pagine-interne.css.
+   Nessuna dipendenza esterna: l'icona e' un SVG inline nell'HTML.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.wa-supporto{
+  position:fixed; right:0; top:50%; transform:translateY(-50%);
+  /* sotto la barra sticky (z-index 60) e sopra l'header (50): a meta'
+     altezza non si incontrano mai, ma se un giorno succedesse la CTA vince */
+  z-index:55;
+  display:flex; align-items:center; gap:10px;
+  padding:13px 15px 13px 14px;
+  /* --navy-2 e non --navy: sulle sezioni navy del sito (che usano --navy)
+     un fondo identico avrebbe reso il widget un rettangolo invisibile */
+  background:var(--navy-2); color:#fff; text-decoration:none;
+  border:1px solid rgba(239,199,94,.62); border-right:0;
+  border-radius:12px 0 0 12px;
+  box-shadow:0 10px 28px rgba(20,18,43,.34);
+  font-family:var(--sans); font-weight:800; font-size:.72rem;
+  letter-spacing:.14em; text-transform:uppercase; line-height:1;
+  transition:transform .16s, background .16s, box-shadow .16s;
+}
+.wa-supporto:hover{
+  background:var(--navy);
+  transform:translateY(-50%) translateX(-3px);
+  box-shadow:0 12px 32px rgba(20,18,43,.42);
+}
+.wa-supporto:focus-visible{outline:3px solid var(--gold); outline-offset:3px}
+/* il verde ufficiale resta solo sull'icona: rende il widget riconoscibile
+   a colpo d'occhio senza portare in pagina un pulsante fuori palette */
+.wa-supporto svg{width:24px; height:24px; flex:none; fill:#25D366; display:block}
+.wa-supporto .et{color:var(--gold)}
+
+/* Su mobile lo spazio orizzontale e' poco: la linguetta diventa un quadrato
+   con icona sopra ed etichetta sotto (56x~58px, sopra i 44x44 minimi). */
+@media(max-width:640px){
+  .wa-supporto{
+    flex-direction:column; gap:4px;
+    padding:9px 7px; min-width:56px;
+    font-size:.53rem; letter-spacing:.06em;
+    border-radius:14px 0 0 14px;
+  }
+  .wa-supporto svg{width:26px; height:26px}
+}
+
+/* Schermi molto bassi (telefono in orizzontale): a meta' altezza il widget
+   si avvicinerebbe alla barra sticky, quindi lo si alza. */
+@media(max-height:460px){
+  .wa-supporto{top:38%}
+  .wa-supporto:hover{transform:translateY(-50%) translateX(-3px)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .wa-supporto{transition:none}
+  .wa-supporto:hover{transform:translateY(-50%)}
+}
