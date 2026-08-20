@@ -98,6 +98,18 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
 /* ---------- CTA e campo da portare a casa ---------- */
 .tratti{font-size:1.02rem;font-weight:700;color:var(--navy);margin-bottom:6px}
+/* ---------- la corsa del giorno ---------- */
+.target{margin:0 0 14px;padding:12px 16px 18px;border:1px solid var(--bordo);border-radius:12px;background:#fff}
+.target .riga{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px;font-size:.87rem}
+.target .riga b{font-size:1.05rem;color:var(--navy)}
+.target .riga span{color:var(--tenue)}
+.pista{position:relative;height:10px;border-radius:6px;background:#EDEFF5}
+.pista .fatto{height:100%;border-radius:6px;background:var(--gold);transition:width .6s ease}
+.pista .coniglio{position:absolute;top:-19px;transform:translateX(-50%);font-size:1.35rem;
+  transition:left .6s ease;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
+.pista .arrivo{position:absolute;right:-2px;top:-17px;font-size:1.1rem;line-height:1}
+.target.fatto-tutto{border-color:var(--gold);background:#FFFCF3}
+
 .passi{margin:14px 0 0;border:1px solid #DCE2EF;border-radius:10px;background:#FAFBFE}
 .passi>summary{cursor:pointer;padding:11px 14px;font-size:.83rem;letter-spacing:.04em;
   text-transform:uppercase;color:var(--tenue);font-weight:700;list-style:none}
@@ -194,6 +206,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   </div>
 
   <main>
+    <div id="target" class="target nascosto"></div>
     <p class="conteggio" id="conteggio">Carico…</p>
     <div id="lista"></div>
     <div style="text-align:center;margin-top:14px">
@@ -564,10 +577,70 @@ $('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange =
 let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTimeout(()=>caricaCoda(true), 300); };
 
 /* ═══════════════ KPI ═══════════════ */
+/* ═══════════════ la corsa del giorno ═══════════════
+   Quante chiamate ho gestito io oggi, contro il target. Conta le mie e non
+   quelle di tutti: un admin che vede la somma di due operatrici non sta
+   guardando il proprio lavoro, e la barra non vorrebbe dire niente.
+
+   Il target arriva dalle impostazioni, quindi si cambia senza un deploy. */
+let targetGiornaliero = 48;
+
+function disegnaTarget(fatte){
+  const box = $('#target');
+  if(!io){ box.classList.add('nascosto'); return; }
+  box.classList.remove('nascosto');
+  const quota = Math.max(0, Math.min(1, fatte / targetGiornaliero));
+  const pct = Math.round(quota * 100);
+  const mancano = Math.max(0, targetGiornaliero - fatte);
+  box.classList.toggle('fatto-tutto', fatte >= targetGiornaliero);
+  box.innerHTML = `
+    <div class="riga">
+      <span><b>${fatte}</b> di ${targetGiornaliero} chiamate gestite oggi</span>
+      <span>${mancano ? `ne mancano ${mancano}` : 'obiettivo raggiunto'}</span>
+    </div>
+    <div class="pista">
+      <div class="fatto" style="width:${pct}%"></div>
+      <div class="coniglio" style="left:${pct}%">🐰</div>
+      <div class="arrivo">🥕</div>
+    </div>`;
+  festeggiaSeFinito(fatte);
+}
+
+/* Il popup una volta sola al giorno: la barra si ridisegna a ogni chiamata
+   registrata, e senza questo controllo la festa ripartirebbe ogni volta. */
+function festeggiaSeFinito(fatte){
+  if(fatte < targetGiornaliero) return;
+  const chiave = 'fc_target_' + (io ? io.operatore_id : '') + '_' + new Date().toISOString().slice(0,10);
+  try{ if(localStorage.getItem(chiave)) return; localStorage.setItem(chiave, '1'); }catch(e){}
+
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.innerHTML = `
+   <div class="scheda" style="max-width:460px;text-align:center">
+    <div class="corpo" style="padding:34px 28px">
+      <div style="font-size:3.4rem;line-height:1;margin-bottom:6px">🐰🥕</div>
+      <h2 style="margin:0 0 10px;font-size:1.5rem;color:var(--navy)">Complimenti! Anche oggi ce l'hai fatta</h2>
+      <p style="margin:0 0 20px;color:var(--tenue)">
+        ${fatte} chiamate gestite. Il traguardo era ${targetGiornaliero}.</p>
+      <button class="btn oro" style="width:auto;padding:11px 26px" data-chiudi-festa>Grazie, continuo</button>
+    </div>
+   </div>`;
+  document.body.appendChild(velo);
+  const via = () => velo.remove();
+  velo.querySelector('[data-chiudi-festa]').onclick = via;
+  velo.addEventListener('click', e => { if(e.target === velo) via(); });
+}
+
 async function caricaKpi(){
   try{
     const d = await api('/kpi');
     const oggi = (d.operatore || []).filter(x => (x.giorno || '').slice(0,10) === new Date().toISOString().slice(0,10));
+    if(Number(d.target_giornaliero) > 0) targetGiornaliero = Number(d.target_giornaliero);
+    /* La barra guarda solo le mie: la somma di due operatrici non è il lavoro
+       di nessuno dei due. */
+    const mie = oggi.filter(x => !io || x.operatore_id === io.operatore_id);
+    disegnaTarget(mie.reduce((t,x) => t + Number(x.chiamate || 0), 0));
+
     const somma = c => oggi.reduce((t,x) => t + Number(x[c] || 0), 0);
     /* La vista la chiama contatti_chiusi: leggendo «chiuse» il riquadro ha
        sempre mostrato zero, anche dopo una chiusura vera. */
@@ -653,8 +726,7 @@ async function apriScheda(id){
       </div>
 
       <div class="azioni">
-        <button class="btn oro" data-avvia>Avvia chiamata</button>
-        <span class="cronometro" data-crono>08:00</span>
+        <button class="btn oro" data-gestisci>Gestisci contatto</button>
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
@@ -664,6 +736,11 @@ async function apriScheda(id){
       </div>
 
       <div data-form class="nascosto">
+        <div class="azioni" style="margin:0 0 14px">
+          <button class="btn oro" data-avvia>Avvia chiamata</button>
+          <span class="cronometro" data-crono>08:00</span>
+          <button class="btn" data-fine disabled>Fine chiamata</button>
+        </div>
         <div class="griglia">
           <div>
             <label>Esito</label>
@@ -688,7 +765,7 @@ async function apriScheda(id){
         <label>Note sulla chiamata</label>
         <textarea data-note placeholder="Com'è andata: cosa ha detto, cosa serve ricordare la prossima volta…"></textarea>
         <p class="contatore" data-contatore>0 caratteri</p>
-        <button class="btn oro" data-salva>Registra la chiamata</button>
+        <button class="btn oro" data-salva>Salva modifiche</button>
         <div data-avviso-scheda></div>
       </div>
 
@@ -706,7 +783,38 @@ async function apriScheda(id){
   document.body.appendChild(velo);
 
   const q = s => velo.querySelector(s);
-  let chiamataId = null, partita = null;
+  /* `partita` e `finita` sono gli estremi del cronometro. La riga in chiamate
+     nasce solo quando serve davvero — al primo «Avvia chiamata» o al primo
+     salvataggio — e non all'apertura del riquadro: aprire una scheda per
+     guardarla non e' un tentativo, e per un giorno intero ha lasciato in giro
+     righe vuote che falsavano i conteggi. */
+  let chiamataId = null, partita = null, finita = null;
+
+  const secondiChiamata = () =>
+    partita ? Math.max(0, Math.round(((finita || Date.now()) - partita) / 1000)) : null;
+
+  /* Se il cronometro non e' mai partito non c'e' nessuna chiamata da registrare:
+     si stanno solo salvando delle modifiche alla scheda. */
+  const aggiornaEtichettaSalva = () => {
+    q('[data-salva]').textContent = finita ? 'Registra la chiamata' : 'Salva modifiche';
+  };
+
+  const fermaCronometro = () => {
+    if(cronometro){ clearInterval(cronometro); cronometro = null; }
+    if(partita && !finita) finita = Date.now();
+    q('[data-avvia]').disabled = true;
+    q('[data-fine]').disabled = true;
+    aggiornaEtichettaSalva();
+  };
+
+  /* La riga in chiamate, creata al momento giusto e una volta sola. */
+  const assicuraChiamata = async () => {
+    if(chiamataId) return chiamataId;
+    const r = await api('/chiamata', { method:'POST',
+      body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
+    chiamataId = r.chiamata.id;
+    return chiamataId;
+  };
 
   /* Gli step arrivano dopo, senza far aspettare la scheda: quello che serve per
      iniziare — chi e', cosa devi portare a casa — e' gia' a video. Se lo script
@@ -723,16 +831,24 @@ async function apriScheda(id){
   q('[data-chiudi]').onclick = chiudi;
   velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
 
+  /* Apre la gestione. Non scrive niente: chi apre per cambiare l'operatrice
+     assegnata o correggere una nota non ha fatto nessuna chiamata. */
+  q('[data-gestisci]').onclick = () => {
+    q('[data-form]').classList.remove('nascosto');
+    q('[data-gestisci]').disabled = true;
+    q('[data-esito]').focus();
+  };
+
   /* avvio: registra l'inizio e fa partire il conto alla rovescia degli 8 minuti.
      Erano 5, ma cinque minuti obbligano ad andare al dunque appena aperta la
      telefonata: e' la ragione per cui gli script suonavano forzati. */
   q('[data-avvia]').onclick = async () => {
     q('[data-avvia]').disabled = true;
     try{
-      const r = await api('/chiamata', { method:'POST',
-        body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
-      chiamataId = r.chiamata.id; partita = Date.now();
-      q('[data-form]').classList.remove('nascosto');
+      await assicuraChiamata();
+      partita = Date.now(); finita = null;
+      q('[data-fine]').disabled = false;
+      aggiornaEtichettaSalva();
       let resto = 480;
       cronometro = setInterval(() => {
         resto--;
@@ -744,6 +860,10 @@ async function apriScheda(id){
       }, 1000);
     }catch(e){ alert(e.message); q('[data-avvia]').disabled = false; }
   };
+
+  /* Ferma il cronometro senza salvare: il tempo al telefono e' finito, la
+     scheda si compila con calma. */
+  q('[data-fine]').onclick = fermaCronometro;
 
   /* la nota diventa obbligatoria solo se la chiamata ha ricevuto risposta */
   const aggiornaContatore = () => {
@@ -783,21 +903,53 @@ async function apriScheda(id){
       + `Se voleva solo dire che non gli interessa, usa «Non interessato».`)) {
       return;
     }
+    /* Solo per chi ha un account MigaMATCH c'è qualcosa da disiscrivere. Per
+       gli altri la domanda non ha senso e non si fa. */
+    let anchePiattaforma = false;
+    if(esito === 'Richiede disiscrizione' && c.connector_uid){
+      anchePiattaforma = confirm(
+        `Vuoi che lo disiscriva anche da MigaMATCH, in automatico?\n\n`
+      + `OK — parte la disiscrizione vera: nome, email, telefono e indirizzi vengono\n`
+      + `cancellati dall'anagrafica, l'accesso viene rimosso, i match aperti annullati\n`
+      + `e i crediti fatti scadere. Non si torna indietro.\n\n`
+      + `Annulla — lo tolgo solo dalla nostra lista. Da MigaMATCH resta iscritto,\n`
+      + `e se voleva sparire del tutto va fatto a mano.`);
+    }
+
     q('[data-salva]').disabled = true;
+    /* Salvare mentre il cronometro va lo ferma: il tempo che conta è quello
+       passato al telefono, non quello passato a compilare la scheda. */
+    fermaCronometro();
     const corpo = {
       esito, note: note || null,
       obiezione: q('[data-obiezione]').value || null,
-      durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : null,
+      durata_secondi: secondiChiamata(),
       ricontatto_il: q('[data-ricontatto]').value ? new Date(q('[data-ricontatto]').value).toISOString() : null,
       profilazione_promessa_il: q('[data-profilazione]').value || null
     };
     try{
-      await api('/chiamata/' + chiamataId, { method:'PATCH', body: JSON.stringify(corpo) });
-      chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+      const id = await assicuraChiamata();
+      await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify(corpo) });
     }catch(e){
       avviso('[data-avviso-scheda]', e.message);
       q('[data-salva]').disabled = false;
+      return;
     }
+
+    /* La scheda a questo punto è salvata. La disiscrizione viene dopo di
+       proposito: se MigaMATCH rifiuta, quello che l'operatrice ha scritto non
+       si perde, e lei sa che le resta una cosa da fare a mano. */
+    if(anchePiattaforma){
+      try{
+        const r = await api('/disiscrivi', { method:'POST',
+          body: JSON.stringify({ contatto_id: c.id, motivo: note || null }) });
+        if(r.gia_disiscritto) alert(r.messaggio);
+      }catch(e){
+        alert('La scheda è salvata.\n\nLa disiscrizione da MigaMATCH però NON è riuscita:\n'
+          + e.message + '\n\nVa fatta a mano dal backoffice MigaMATCH.');
+      }
+    }
+    chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
   };
 
   /* ---- riassegnazione: il contatto passa nella coda dell'altra persona ---- */
