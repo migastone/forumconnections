@@ -286,6 +286,33 @@ const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde']);
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
 const ANDATA_BENE = new Set(['Ci pensa','Viene','Promette Profilazione',
                              'Profilato - Call back']);
+
+/* Esiti che non hanno senso per un certo obiettivo. Chi deve ancora profilarsi
+   non può «venire» né «aver comprato»: quelle scelte riguardano il biglietto, e
+   averle nel menu è solo un modo per sbagliare. */
+const ESITI_FUORI_CONTESTO = {
+  profilazione: new Set(['Viene','Non può venire','Acquistato']),
+  forum:        new Set(['Profilato - Call back'])
+};
+
+/* Quale data serve per quale esito, e se è obbligatoria.
+   `ricontatto` è la data in cui il contatto torna in cima alla lista;
+   `profilazione` è la data che la persona ha promesso per completare il profilo.
+   Non compaiono mai insieme: sono due impegni diversi e mostrarli entrambi
+   lasciava scegliere quello sbagliato. */
+const CAMPI_ESITO = {
+  'Ci pensa':              { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
+  'Non risponde':          { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
+  'Da Ricontattare':       { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
+  'Profilato - Call back': { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
+  'Promette Profilazione': { ricontatto:'no', profilazione:'obbligatoria', risposto:false },
+  'Viene':                 { ricontatto:'facoltativa',  profilazione:'no', risposto:true  },
+  'Altro':                 { ricontatto:'facoltativa',  profilazione:'no', risposto:true  }
+};
+/* Tutto il resto — acquistato, non può venire, non interessato, disiscrizione,
+   altro operatore — chiude il contatto: nessuna data da prendere. */
+const CAMPI_DEFAULT = { ricontatto:'no', profilazione:'no', risposto:true };
+const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
@@ -786,22 +813,30 @@ async function apriScheda(id){
         <div class="griglia">
           <div>
             <label>Esito</label>
-            <select class="campo" data-esito>${ESITI.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+            <select class="campo" data-esito>${ESITI.filter(e => {
+              /* L'esito già registrato resta sempre selezionabile, anche se
+                 fuori contesto: nasconderlo impedirebbe di risalvare la scheda.
+                 E chi è maturo per il Forum tiene «Profilato - Call back», che
+                 per lui è esattamente lo stato giusto. */
+              if(e === c.ultimo_esito) return true;
+              if(e === 'Profilato - Call back' && c.pronto_per_forum) return true;
+              return !(ESITI_FUORI_CONTESTO[obiettivo] || new Set()).has(e);
+            }).map(s=>`<option>${esc(s)}</option>`).join('')}</select>
           </div>
           <div>
             <label>Obiezione principale</label>
             <select class="campo" data-obiezione><option value="">—</option>
               ${OBIEZIONI.map(o=>`<option>${esc(o)}</option>`).join('')}</select>
           </div>
-          <div class="${obiettivo==='forum'?'campo-chiave':'secondario'}">
+          <div data-box-ricontatto class="secondario">
             <label>Data di ricontatto</label>
             <input class="campo" type="datetime-local" data-ricontatto>
-            ${obiettivo==='forum'?'<div class="serve">È questa che devi portare a casa</div>':''}
+            <div class="serve" data-serve-ricontatto style="display:none">È questa che devi portare a casa</div>
           </div>
-          <div class="${obiettivo==='profilazione'?'campo-chiave':'secondario'}">
+          <div data-box-profilazione class="secondario">
             <label>Profilazione promessa entro</label>
             <input class="campo" type="date" data-profilazione>
-            ${obiettivo==='profilazione'?'<div class="serve">È questa che devi portare a casa</div>':''}
+            <div class="serve" data-serve-profilazione style="display:none">È questa che devi portare a casa</div>
           </div>
         </div>
         <div class="azioni" data-messaggi style="margin:0 0 14px"></div>
@@ -925,18 +960,59 @@ async function apriScheda(id){
     el.classList.toggle('corto', serve && n < 20);
   };
   q('[data-note]').oninput = aggiornaContatore;
-  q('[data-esito]').onchange = () => {
-    /* «Non risponde» e la spunta non possono convivere: si toglie da sola e si
-       blocca, cosi' non resta a segnare una risposta che non c'e' stata. */
-    const senzaRisposta = SENZA_RISPOSTA.has(q('[data-esito]').value);
-    if(senzaRisposta) q('[data-risposto]').checked = false;
-    q('[data-risposto]').disabled = senzaRisposta;
-    aggiornaContatore(); aggiornaEtichetteMessaggi();
+  const perInput = d => {
+    const z = n => String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
   };
+
+  /* La scheda mostra solo i campi che quell'esito richiede davvero. Prima
+     c'erano sempre tutti e due, e per ogni contatto uno dei due era la scelta
+     sbagliata: la data di ricontatto e la data di profilazione sono impegni
+     diversi, e mostrarli insieme li faceva confondere. */
+  const adattaCampi = () => {
+    const esito = q('[data-esito]').value;
+    const k = campiPer(esito);
+
+    q('[data-box-ricontatto]').style.display   = k.ricontatto   === 'no' ? 'none' : '';
+    q('[data-box-profilazione]').style.display = k.profilazione === 'no' ? 'none' : '';
+    q('[data-box-ricontatto]').className   = k.ricontatto   === 'obbligatoria' ? 'campo-chiave' : 'secondario';
+    q('[data-box-profilazione]').className = k.profilazione === 'obbligatoria' ? 'campo-chiave' : 'secondario';
+    q('[data-serve-ricontatto]').style.display   = k.ricontatto   === 'obbligatoria' ? '' : 'none';
+    q('[data-serve-profilazione]').style.display = k.profilazione === 'obbligatoria' ? '' : 'none';
+
+    /* Un valore di partenza c'è sempre: il primo giorno lavorativo utile alle 9.
+       Si può spostare, ed è quella la data in cui il contatto risale in cima. */
+    if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value)
+      q('[data-ricontatto]').value = perInput(prossimoGiornoLavorativo());
+
+    /* Su «Promette Profilazione» la domanda non si pone: se ha promesso, ha
+       risposto. La spunta sparisce e resta vera. */
+    const box = q('[data-risposto]').closest('label');
+    if(!k.risposto){
+      q('[data-risposto]').checked = true;
+      q('[data-risposto]').disabled = true;
+      box.style.display = 'none';
+    }else{
+      box.style.display = '';
+      const senzaRisposta = SENZA_RISPOSTA.has(esito);
+      if(senzaRisposta) q('[data-risposto]').checked = false;
+      q('[data-risposto]').disabled = senzaRisposta;
+    }
+  };
+
+  q('[data-esito]').onchange = () => { adattaCampi(); aggiornaContatore(); aggiornaEtichetteMessaggi(); };
   q('[data-risposto]').onchange = () => { aggiornaContatore(); aggiornaEtichetteMessaggi(); };
+  q('[data-ricontatto]').oninput = () => aggiornaEtichetteMessaggi();
+  q('[data-profilazione]').oninput = () => aggiornaEtichetteMessaggi();
+
+  /* Le date già prese si ritrovano nei campi: senza, riaprire una scheda e
+     salvarla cancellava l'impegno preso alla telefonata precedente. */
+  if(c.ricontatto_il) q('[data-ricontatto]').value = perInput(new Date(c.ricontatto_il));
+  if(c.profilazione_promessa_il) q('[data-profilazione]').value = String(c.profilazione_promessa_il).slice(0,10);
 
   /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
   if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
+  adattaCampi();
   aggiornaContatore();
 
   q('[data-salva]').onclick = async () => {
@@ -945,12 +1021,13 @@ async function apriScheda(id){
       return avviso('[data-avviso-scheda]','Con questo esito la nota è obbligatoria: servono almeno 20 caratteri.');
     /* «Ricontatto» e «Profilato - Call back» sono impegni con una data: senza,
        il contatto sparirebbe in fondo alla coda invece di tornare quando serve. */
-    if((esito === 'Da Ricontattare' || esito === 'Profilato - Call back') && !q('[data-ricontatto]').value)
-      return avviso('[data-avviso-scheda]','Con questo esito serve la data di ricontatto: è l\'impegno che hai preso al telefono.');
-    /* «Promette Profilazione» è la stessa cosa, ma la data che conta è l'altra:
-       è quella che hai fatto dire a lui, ed è quella che finisce nel messaggio
-       di recap. Senza, la promessa non scade mai e nessuno lo richiama. */
-    if(esito === 'Promette Profilazione' && !q('[data-profilazione]').value)
+    const chiede = campiPer(esito);
+    if(chiede.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value)
+      return avviso('[data-avviso-scheda]','Con questo esito serve la data di ricontatto: è quella che lo fa tornare in cima alla lista.');
+    /* La data che conta qui è l'altra: è quella che hai fatto dire a lui, ed è
+       quella che finisce nel messaggio di recap. Senza, la promessa non scade
+       mai e nessuno lo richiama. */
+    if(chiede.profilazione === 'obbligatoria' && !q('[data-profilazione]').value)
       return avviso('[data-avviso-scheda]','Con questo esito serve la data entro cui si profila: è la promessa che ti ha fatto al telefono.');
     /* La cancellazione non si annulla dalla pagina: il contatto esce dalla lista
        e non ci rientra. Meglio una domanda in più che una persona tolta per
@@ -1108,7 +1185,15 @@ async function apriScheda(id){
        vale ancora l'ultimo esito registrato, non un ritorno al primo messaggio. */
     return (v && v !== 'Da Contattare') ? v : null;
   };
-  const messaggioPer = canale => componiMessaggio(c, undefined, { canale, esito: esitoScelto() });
+  /* Il messaggio si compone su quello che c'è nel modulo adesso, non su quello
+     che era salvato: le date le stai scrivendo ora, e vederle sbagliate
+     nell'anteprima è il modo piu' rapido per mandare un messaggio sbagliato. */
+  const contattoOra = () => Object.assign({}, c, {
+    ricontatto_il: q('[data-ricontatto]').value
+      ? new Date(q('[data-ricontatto]').value).toISOString() : c.ricontatto_il,
+    profilazione_promessa_il: q('[data-profilazione]').value || c.profilazione_promessa_il
+  });
+  const messaggioPer = canale => componiMessaggio(contattoOra(), undefined, { canale, esito: esitoScelto() });
 
   /* Gli stati per cui non c'e' niente da mandare: a chi ha chiesto di essere
      cancellato non si scrive piu', e finche' non si e' scelto un esito non si
@@ -1320,25 +1405,31 @@ function promessaScaduta(c){
 }
 
 function dataImpegno(c, esito){
-  /* Chi ha un appuntamento telefonico ha una data e un'ora, e sono quelle che
-     contano — anche se il suo obiettivo è la profilazione, che di suo userebbe
-     l'altra data. Senza questo, dopo un «Ricontatto» su un contatto da
-     profilare non c'era nessuna data da mettere nel messaggio, e l'invio
-     restava bloccato. */
-  if((esito || c.ultimo_esito) === 'Da Ricontattare' && c.ricontatto_il){
-    const d = new Date(c.ricontatto_il);
-    return d.toLocaleDateString('it-IT',{weekday:'long', day:'numeric', month:'long'})
-         + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
-  }
-  if(obiettivoPer(c) === 'profilazione'){
+  /* Quale data va nel messaggio lo decide lo stesso schema che governa i campi
+     della scheda: se quell'esito chiede la data di ricontatto è quella, se
+     chiede la profilazione promessa è l'altra. Prima si deduceva dall'obiettivo
+     del contatto, e dopo un appuntamento su un contatto da profilare non
+     trovava nessuna data: il messaggio restava incompleto e l'invio bloccato. */
+  const e = esito || c.ultimo_esito || '';
+  const k = campiPer(e);
+
+  if(k.profilazione === 'obbligatoria'){
     const g = c.profilazione_promessa_il;
     if(!g) return null;
     return new Date(String(g) + 'T12:00:00').toLocaleDateString('it-IT',
       {day:'numeric', month:'long'});
   }
-  const t = c.ricontatto_il;
-  if(!t) return null;
-  const d = new Date(t);
+  if(k.ricontatto !== 'no' && c.ricontatto_il){
+    const d = new Date(c.ricontatto_il);
+    return d.toLocaleDateString('it-IT',{weekday:'long', day:'numeric', month:'long'})
+         + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
+  }
+  /* Fuori da quei casi vale quello che c'è: prima la promessa, poi il richiamo. */
+  if(c.profilazione_promessa_il && obiettivoPer(c) === 'profilazione')
+    return new Date(String(c.profilazione_promessa_il) + 'T12:00:00')
+      .toLocaleDateString('it-IT',{day:'numeric', month:'long'});
+  if(!c.ricontatto_il) return null;
+  const d = new Date(c.ricontatto_il);
   return d.toLocaleDateString('it-IT',{day:'numeric', month:'long'})
        + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
 }
@@ -1494,6 +1585,17 @@ Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.
      chiede niente in cambio — ma senza nessun aggancio: proporre ancora
      qualcosa a chi ha appena declinato e' il modo piu' rapido per farsi
      ricordare male. */
+  /* Ci sta pensando: non ha promesso niente, e infatti qui non si mette per
+     iscritto nessun impegno. Si conferma solo quando ci si risente. */
+  ci_pensa: p =>
+`Ciao ${p.nome}, sono ${p.op} di ${p.brand} — grazie per il tempo di prima.
+
+Ti lascio pensare con calma: ti richiamo *${p.data}* e ne riparliamo, senza fretta.
+
+Intanto ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pagina 22 ci trovi noi.
+
+Se nel frattempo ti viene un dubbio, scrivimi pure qui.`,
+
   solo_economy: p =>
 `Ciao ${p.nome}, come promesso al telefono ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pagina 22 ci trovi noi.
 
@@ -1527,6 +1629,7 @@ const OGGETTI = {
   bene_profilazione: n => `${n}, il riassunto di quello che ci siamo detti`,
   bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
+  ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
   benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
@@ -1574,6 +1677,11 @@ function componiMessaggio(c, operatore, opzioni){
   else if(esito === 'Da Ricontattare'){
                                     quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
   else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
+  /* «Ci pensa» non è un impegno: mandargli il recap di una promessa che non ha
+     fatto è il modo migliore per irrigidirlo alla telefonata dopo. */
+  else if(esito === 'Ci pensa'){    quale = 'ci_pensa';               tipo = 'economy'; }
+  /* Segnato a mano «Non risponde»: è il secondo buco, e tocca il messaggio n.2. */
+  else if(esito === 'Non risponde'){ quale = varianteSecondoBuco(c);  tipo = 'economy'; tentativo = 2; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
 
@@ -1585,6 +1693,7 @@ function componiMessaggio(c, operatore, opzioni){
   const mancano = [];
   if(quale.startsWith('bene_') && !data) mancano.push('data');
   if(quale === 'appuntamento' && !data) mancano.push('data');
+  if(quale === 'ci_pensa' && !data) mancano.push('data');
   if(quale === 'email_promesso' && !data) mancano.push('data');
   if((quale === 'bene_forum' || quale === 'email_promesso') && !prezzo) mancano.push('prezzo');
   if(quale === 'quattro_b' && !edizione) mancano.push('edizione');
@@ -1602,6 +1711,7 @@ function componiMessaggio(c, operatore, opzioni){
     bene_profilazione: 'recap dopo la chiamata · profilazione',
     bene_forum: 'recap dopo la chiamata · Forum',
     appuntamento: 'chiamata a metà · appuntamento preso',
+    ci_pensa: 'ci sta pensando · si risente',
     solo_economy: 'ha detto di no · Economy lo stesso',
     email_promesso: 'ha detto di venire e non ha ancora comprato',
     benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
@@ -1641,6 +1751,7 @@ const COSA_PARTE = {
   bene_profilazione:  'recap e link del profilo',
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
+  ci_pensa:           'ci risentiamo, con Economy',
   solo_economy:       'solo Economy',
   email_promesso:     'riassunto e offerta'
 };
