@@ -33,6 +33,8 @@ button{cursor:pointer}
 .btn:disabled{opacity:.5;cursor:default}
 .btn.oro{background:var(--gold);color:var(--ink)}
 .btn.oro:hover{background:var(--gold-dk)}
+.btn.verde{background:#1FA855}
+.btn.verde:hover{background:#188745}
 .avviso{margin:12px 0 0;padding:10px 12px;border-radius:8px;font-size:.87rem}
 .avviso.err{background:#FDECEC;color:#98292E;border:1px solid #F3C9C9}
 .avviso.ok{background:#EAF6EF;color:#245F3D;border:1px solid #C6E5D3}
@@ -537,10 +539,10 @@ async function apriScheda(id){
 
       <div class="azioni">
         <button class="btn oro" data-avvia>Avvia chiamata</button>
-        <span class="cronometro" data-crono>05:00</span>
+        <span class="cronometro" data-crono>08:00</span>
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
-        <button class="btn" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
+        <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
         <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
           c.acquirente ? 'Email · benvenuto' : (c.promesso_non_pagato?'Email · riassunto e offerta':'Email')}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
@@ -591,7 +593,9 @@ async function apriScheda(id){
   q('[data-chiudi]').onclick = chiudi;
   velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
 
-  /* avvio: registra l'inizio e fa partire il conto alla rovescia dei 5 minuti */
+  /* avvio: registra l'inizio e fa partire il conto alla rovescia degli 8 minuti.
+     Erano 5, ma cinque minuti obbligano ad andare al dunque appena aperta la
+     telefonata: e' la ragione per cui gli script suonavano forzati. */
   q('[data-avvia]').onclick = async () => {
     q('[data-avvia]').disabled = true;
     try{
@@ -599,7 +603,7 @@ async function apriScheda(id){
         body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
       chiamataId = r.chiamata.id; partita = Date.now();
       q('[data-form]').classList.remove('nascosto');
-      let resto = 300;
+      let resto = 480;
       cronometro = setInterval(() => {
         resto--;
         const m = String(Math.floor(Math.abs(resto)/60)).padStart(2,'0'),
@@ -679,9 +683,17 @@ async function apriScheda(id){
     const secondo = (c.ultimo_esito || 'Da Contattare') === 'Richiamata';
     const m = componiMessaggio(c);
     const quando = secondo ? null : prossimoGiornoLavorativo();
-    if(!confirm(secondo
-        ? 'Secondo tentativo a vuoto: il contatto si chiude con «Non risponde» e parte il WhatsApp n.2. Procedo?'
-        : `Primo tentativo a vuoto: il contatto passa in «Richiamata» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})} e parte il WhatsApp n.1. Procedo?`)) return;
+    /* La domanda prima di tutto: segnare «non risponde» a chi non ha ancora
+       ricevuto niente lo toglie dalla coda di oggi senza che gli sia arrivato
+       un solo messaggio. Se la risposta e' no, qui non succede niente e i due
+       pulsanti per mandarli sono li' accanto. */
+    const chi = (c.nome || '').trim() || 'questo contatto';
+    const conseguenza = secondo
+      ? 'il contatto si chiude con «Non risponde»'
+      : `il contatto passa in «Richiamata» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`;
+    if(!confirm(`Hai gia' mandato il WhatsApp e l'email a ${chi}?\n\n`
+      + `OK — si': ${conseguenza}.\n`
+      + `Annulla — no: non segno niente, cosi' li mandi adesso.`)) return;
 
     bottone.disabled = true;
     try{
@@ -913,9 +925,11 @@ ${p.brand}`,
   bene_profilazione: p =>
 `Ciao ${p.nome}, grazie per il tempo di poco fa — ${p.op} di ${p.brand}.
 
-Ti riassumo così restiamo allineati: come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${p.data}*, se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ci sentiremo tra un mesetto per un feedback su come è andata con i tuoi match.
+Ti riassumo così restiamo allineati: come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${p.data}*. Se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là per sapere come è andata con i primi match — tienimi aggiornato, mi fa piacere saperlo.
 
 Qui c'è il link, sono dieci minuti dal telefono: ${p.linkProfilo}
+
+P.S. Il 17 ottobre a Milano abbiamo il Forum Connections, la giornata dal vivo. Non è per adesso: ne riparliamo dopo che hai fatto il primo match.
 
 A presto!`,
 
