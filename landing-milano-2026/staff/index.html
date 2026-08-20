@@ -206,17 +206,19 @@ const API      = URL_SUPA + '/functions/v1/ricontatti-api';
 const DEPOSITO = 'fc_ricontatti_sessione';
 
 const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Ricontatto',
-               'Profilato - Call back','Non può venire','Acquistato','Da NON chiamare',
-               'Altro operatore','Altro'];
+               'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
+               'Da NON chiamare','Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
-const CONNESSI = new Set(['Ci pensa','Viene','Ricontatto','Profilato - Call back','Non può venire',
+const CONNESSI = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
+                          'Profilato - Call back','Non può venire',
                           'Acquistato','Da NON chiamare','Altro operatore','Altro']);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
-const ANDATA_BENE = new Set(['Ci pensa','Viene','Ricontatto','Profilato - Call back']);
+const ANDATA_BENE = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
+                             'Profilato - Call back']);
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Da NON chiamare','Non può venire','Altro operatore']);
@@ -544,6 +546,10 @@ async function apriScheda(id){
         <div style="margin-top:5px">${obiettivo==='profilazione'
            ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
            : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
+        ${c.promessa_aperta ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
+           <b>${esc(dataImpegno(c) || 'una data che non è stata segnata')}</b>${promessaScaduta(c)
+             ? ' — <b>la data è passata</b> e il profilo non risulta ancora completato: è questo il motivo della chiamata.'
+             : '. Se nel frattempo lo completa, sparisce da qui da solo e torna fra sette giorni per il feedback.'}</div>`:''}
         ${c.pronto_per_forum ? `<div style="margin-top:5px">Si è profilato
            ${c.profilato_il ? 'il ' + dataOra(c.profilato_il) : ''} dopo una nostra chiamata, e sono passati
            più di sette giorni: è il momento del feedback e della proposta per il Forum.
@@ -675,6 +681,11 @@ async function apriScheda(id){
        il contatto sparirebbe in fondo alla coda invece di tornare quando serve. */
     if((esito === 'Ricontatto' || esito === 'Profilato - Call back') && !q('[data-ricontatto]').value)
       return avviso('[data-avviso-scheda]','Con questo esito serve la data di ricontatto: è l\'impegno che hai preso al telefono.');
+    /* «Promette Profilazione» è la stessa cosa, ma la data che conta è l'altra:
+       è quella che hai fatto dire a lui, ed è quella che finisce nel messaggio
+       di recap. Senza, la promessa non scade mai e nessuno lo richiama. */
+    if(esito === 'Promette Profilazione' && !q('[data-profilazione]').value)
+      return avviso('[data-avviso-scheda]','Con questo esito serve la data entro cui si profila: è la promessa che ti ha fatto al telefono.');
     q('[data-salva]').disabled = true;
     const corpo = {
       esito, note: note || null,
@@ -931,6 +942,14 @@ function obiettivoPer(c){
    dopo un articolo — «entro il [DATA]», «fino al [DATA]» — e «entro il giovedì
    27 agosto» non è italiano. L'ora c'è quando c'è, perché la regola della
    campagna è dire giorno e ora, mai «48 ore».                                */
+/* La promessa di profilarsi e' scaduta e il profilo non risulta completato.
+   Il database la considera aperta finche' non si profila davvero: qui serve
+   solo a dirlo in scheda con parole diverse da un generico «in ritardo». */
+function promessaScaduta(c){
+  if(!c.promessa_aperta || !c.profilazione_promessa_il) return false;
+  return new Date(String(c.profilazione_promessa_il) + 'T18:00:00') < new Date();
+}
+
 function dataImpegno(c){
   if(obiettivoPer(c) === 'profilazione'){
     const g = c.profilazione_promessa_il;
