@@ -132,6 +132,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .testo-script .bul{margin:0 0 5px 16px;font-size:.9rem}
 .testo-script .obz{margin:0 0 10px}
 .testo-script .obz b{display:block;color:var(--navy)}
+.mantenuta{color:#22603F;font-weight:700}
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
@@ -604,6 +605,9 @@ function riga(r){
     </div>
     <div class="destra">
       <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b></div>
+      ${promessaMantenuta(r)
+        ? `<div class="mantenuta">✓ profilato${r.profilato_il ? ' il ' + new Date(r.profilato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : ''}</div>`
+        : ''}
       <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
       <div>${etichettaAssegnato(r)}</div>
     </div>
@@ -796,6 +800,11 @@ async function apriScheda(id){
         <div style="margin-top:5px">${obiettivo==='profilazione'
            ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
            : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
+        ${promessaMantenuta(c) ? `<div style="margin-top:5px" class="mantenuta">✓ Ha promesso di profilarsi
+           e l'ha fatto${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}. Non c'è altro da fare adesso:
+           torna da solo${c.profilato_il ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5)
+             .toLocaleDateString('it-IT',{day:'numeric',month:'long'}) : ' fra sette giorni'} per il feedback
+           sui primi match e la proposta per il Forum.</div>` : ''}
         ${c.promessa_aperta ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
            <b>${esc(dataImpegno(c) || 'una data che non è stata segnata')}</b>${promessaScaduta(c)
              ? ' — <b>la data è passata</b> e il profilo non risulta ancora completato: è questo il motivo della chiamata.'
@@ -1413,6 +1422,13 @@ function obiettivoPer(c){
 /* La promessa di profilarsi e' scaduta e il profilo non risulta completato.
    Il database la considera aperta finche' non si profila davvero: qui serve
    solo a dirlo in scheda con parole diverse da un generico «in ritardo». */
+/* Ha promesso di profilarsi e l'ha fatto. L'esito resta quello che l'operatrice
+   ha registrato al telefono — la promessa e' stata presa davvero, ed e' un
+   pezzo del suo lavoro — ma accanto si vede che e' stata mantenuta. */
+function promessaMantenuta(c){
+  return (c.ultimo_esito === 'Promette Profilazione') && c.promessa_aperta === false;
+}
+
 function promessaScaduta(c){
   if(!c.promessa_aperta || !c.profilazione_promessa_il) return false;
   return new Date(String(c.profilazione_promessa_il) + 'T18:00:00') < new Date();
