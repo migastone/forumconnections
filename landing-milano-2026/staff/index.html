@@ -286,6 +286,24 @@ const $ = s => document.querySelector(s);
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dataOra = v => v ? new Date(v).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
 
+/* La durata di una singola chiamata, al secondo. Arrotondarla ai minuti
+   cancellava proprio l'informazione utile: una da 65 secondi e una da 25
+   diventavano «1 min» e «0 min», e la seconda spariva del tutto.
+   Torna null quando il cronometro non è mai partito — che è un'altra cosa da
+   una chiamata durata zero, e va detta con parole diverse. */
+function durataChiamata(sec){
+  const s = Math.round(Number(sec) || 0);
+  if(s <= 0) return null;
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/* La stessa cosa su un giorno intero di lavoro, dove i secondi non servono. */
+function durataGiornata(sec){
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return h ? h + 'h ' + String(m).padStart(2,'0') + 'm' : m + ' min';
+}
+
 /* Copia negli appunti. Il metodo moderno vuole un contesto sicuro: la pagina sta
    su https, ma se per qualche motivo non lo fosse resta il ripiego con textarea,
    altrimenti l'operatrice si ritroverebbe con gli appunti vuoti e nessun segnale. */
@@ -551,11 +569,22 @@ async function caricaKpi(){
     const d = await api('/kpi');
     const oggi = (d.operatore || []).filter(x => (x.giorno || '').slice(0,10) === new Date().toISOString().slice(0,10));
     const somma = c => oggi.reduce((t,x) => t + Number(x[c] || 0), 0);
-    const fatte = somma('chiamate'), connesse = somma('connesse'), chiuse = somma('chiuse');
+    /* La vista la chiama contatti_chiusi: leggendo «chiuse» il riquadro ha
+       sempre mostrato zero, anche dopo una chiusura vera. */
+    const fatte = somma('chiamate'), connesse = somma('connesse'), chiuse = somma('contatti_chiusi');
+    const alTelefono = somma('durata_totale_secondi');
+    const senzaCrono = somma('connesse_senza_cronometro');
+    /* Media rifatta qui e non presa dalla vista: sommare le medie di due
+       operatrici darebbe un numero che non vuol dire niente. */
+    const cronometrate = connesse - senzaCrono;
+    const media = cronometrate > 0 ? Math.round(alTelefono / cronometrate) : 0;
     $('#kpi').innerHTML = `
       <div><b>${fatte}</b><small>chiamate</small></div>
       <div><b>${connesse}</b><small>risposte</small></div>
       <div><b>${chiuse}</b><small>chiuse</small></div>
+      <div><b>${durataGiornata(alTelefono)}</b><small>al telefono</small></div>
+      <div><b>${media ? durataChiamata(media) : '—'}</b><small>durata media${
+        senzaCrono ? ` · ${senzaCrono} non cronometrat${senzaCrono===1?'a':'e'}` : ''}</small></div>
       <div><b>${ultimoTotale.toLocaleString('it-IT')}</b><small>in coda</small></div>`;
   }catch(e){ $('#kpi').innerHTML = `<div class="chi">KPI non disponibili</div>`; }
 }
@@ -668,7 +697,9 @@ async function apriScheda(id){
       ${storico.length ? `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>
         ${storico.map(s=>`<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
           <b>${esc(s.esito||'—')}</b> · ${dataOra(s.iniziata_il)} · ${esc(s.operatore||'')}
-          ${s.durata_secondi?` · ${Math.round(s.durata_secondi/60)} min`:''}
+          ${durataChiamata(s.durata_secondi)
+            ? ` · <b>${durataChiamata(s.durata_secondi)}</b>`
+            : (s.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
           ${s.note?`<div style="color:var(--tenue)">${esc(s.note)}</div>`:''}</div>`).join('')}`:''}
     </div>
    </div>`;
