@@ -277,11 +277,14 @@ const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','d
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
-/* Se la chiamata ha avuto risposta non si deduce piu' dall'esito: lo dice
-   l'operatrice con la spunta in scheda. «Da Ricontattare» capita in tutti e due
-   i casi — non ha risposto e si riprova, oppure ha risposto e vi siete dati un
-   appuntamento — ed e' proprio la differenza che il vecchio nome nascondeva. */
-const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde']);
+/* Gli esiti che NON sono una conversazione. Tutto il resto lo e' per
+   definizione: se hai segnato «ci pensa» o «promette di profilarsi», hai
+   parlato con qualcuno.
+   «Da Ricontattare» sta qui fuori perche' dal modulo lo si sceglie dopo aver
+   parlato; quando invece non risponde, ci si arriva dal pulsante rapido, che
+   dichiara lui che non c'e' stata risposta. */
+const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Altro operatore']);
+const haRisposto = esito => !SENZA_RISPOSTA.has(esito);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
 const ANDATA_BENE = new Set(['Ci pensa','Viene','Promette Profilazione',
@@ -301,17 +304,16 @@ const ESITI_FUORI_CONTESTO = {
    Non compaiono mai insieme: sono due impegni diversi e mostrarli entrambi
    lasciava scegliere quello sbagliato. */
 const CAMPI_ESITO = {
-  'Ci pensa':              { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
-  'Non risponde':          { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
-  'Da Ricontattare':       { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
-  'Profilato - Call back': { ricontatto:'obbligatoria', profilazione:'no', risposto:true  },
-  'Promette Profilazione': { ricontatto:'no', profilazione:'obbligatoria', risposto:false },
-  'Viene':                 { ricontatto:'facoltativa',  profilazione:'no', risposto:true  },
-  'Altro':                 { ricontatto:'facoltativa',  profilazione:'no', risposto:true  }
+  'Ci pensa':              { ricontatto:'obbligatoria', profilazione:'no' },
+  'Non risponde':          { ricontatto:'obbligatoria', profilazione:'no' },
+  'Da Ricontattare':       { ricontatto:'obbligatoria', profilazione:'no' },
+  'Profilato - Call back': { ricontatto:'obbligatoria', profilazione:'no' },
+  'Promette Profilazione': { ricontatto:'no', profilazione:'obbligatoria' },
+  'Viene':                 { ricontatto:'facoltativa',  profilazione:'no' },
+  'Altro':                 { ricontatto:'facoltativa',  profilazione:'no' }
 };
-/* Tutto il resto — acquistato, non può venire, non interessato, disiscrizione,
-   altro operatore — chiude il contatto: nessuna data da prendere. */
-const CAMPI_DEFAULT = { ricontatto:'no', profilazione:'no', risposto:true };
+/* Tutto il resto chiude il contatto: nessuna data da prendere. */
+const CAMPI_DEFAULT = { ricontatto:'no', profilazione:'no' };
 const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
@@ -840,10 +842,6 @@ async function apriScheda(id){
           </div>
         </div>
         <div class="azioni" data-messaggi style="margin:0 0 14px"></div>
-        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 12px">
-          <input type="checkbox" data-risposto checked style="width:17px;height:17px;margin:0">
-          <span>Ha risposto al telefono</span>
-        </label>
         <label>Note sulla chiamata</label>
         <textarea data-note placeholder="Com'è andata: cosa ha detto, cosa serve ricordare la prossima volta…"></textarea>
         <p class="contatore" data-contatore>0 caratteri</p>
@@ -954,7 +952,7 @@ async function apriScheda(id){
   /* la nota diventa obbligatoria solo se la chiamata ha ricevuto risposta */
   const aggiornaContatore = () => {
     const n = q('[data-note]').value.trim().length;
-    const serve = q('[data-risposto]').checked;
+    const serve = haRisposto(q('[data-esito]').value);
     const el = q('[data-contatore]');
     el.textContent = serve ? `${n} caratteri — minimo 20 perché la chiamata ha avuto risposta` : `${n} caratteri`;
     el.classList.toggle('corto', serve && n < 20);
@@ -985,23 +983,10 @@ async function apriScheda(id){
     if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value)
       q('[data-ricontatto]').value = perInput(prossimoGiornoLavorativo());
 
-    /* Su «Promette Profilazione» la domanda non si pone: se ha promesso, ha
-       risposto. La spunta sparisce e resta vera. */
-    const box = q('[data-risposto]').closest('label');
-    if(!k.risposto){
-      q('[data-risposto]').checked = true;
-      q('[data-risposto]').disabled = true;
-      box.style.display = 'none';
-    }else{
-      box.style.display = '';
-      const senzaRisposta = SENZA_RISPOSTA.has(esito);
-      if(senzaRisposta) q('[data-risposto]').checked = false;
-      q('[data-risposto]').disabled = senzaRisposta;
-    }
+
   };
 
   q('[data-esito]').onchange = () => { adattaCampi(); aggiornaContatore(); aggiornaEtichetteMessaggi(); };
-  q('[data-risposto]').onchange = () => { aggiornaContatore(); aggiornaEtichetteMessaggi(); };
   q('[data-ricontatto]').oninput = () => aggiornaEtichetteMessaggi();
   q('[data-profilazione]').oninput = () => aggiornaEtichetteMessaggi();
 
@@ -1017,7 +1002,7 @@ async function apriScheda(id){
 
   q('[data-salva]').onclick = async () => {
     const esito = q('[data-esito]').value, note = q('[data-note]').value.trim();
-    if(q('[data-risposto]').checked && note.length < 20)
+    if(haRisposto(esito) && note.length < 20)
       return avviso('[data-avviso-scheda]','Con questo esito la nota è obbligatoria: servono almeno 20 caratteri.');
     /* «Ricontatto» e «Profilato - Call back» sono impegni con una data: senza,
        il contatto sparirebbe in fondo alla coda invece di tornare quando serve. */
@@ -1060,9 +1045,10 @@ async function apriScheda(id){
       esito, note: note || null,
       obiezione: q('[data-obiezione]').value || null,
       durata_secondi: secondiChiamata(),
-      /* Dichiarata, non dedotta: e' il numero su cui si misurano il tasso di
-         risposta e la durata media. */
-      connessa: q('[data-risposto]').checked,
+      /* Dall'esito: se hai segnato «ci pensa» o «promette di profilarsi», hai
+         parlato con qualcuno. Il caso in cui non e' cosi' — non risponde — ha
+         il suo esito e il suo pulsante. */
+      connessa: haRisposto(esito),
       ricontatto_il: q('[data-ricontatto]').value ? new Date(q('[data-ricontatto]').value).toISOString() : null,
       profilazione_promessa_il: q('[data-profilazione]').value || null
     };
@@ -1198,7 +1184,7 @@ async function apriScheda(id){
   /* Gli stati per cui non c'e' niente da mandare: a chi ha chiesto di essere
      cancellato non si scrive piu', e finche' non si e' scelto un esito non si
      sa nemmeno cosa proporre. */
-  const SENZA_MESSAGGIO = new Set(['', 'Da Contattare', 'Richiede disiscrizione']);
+  const SENZA_MESSAGGIO = new Set(['', 'Da Contattare', 'Richiede disiscrizione', 'Altro operatore']);
 
   const aggiornaEtichetteMessaggi = () => {
     /* La riga in alto resta allineata finche' e' visibile. */
@@ -1209,10 +1195,12 @@ async function apriScheda(id){
     if(!dentro) return;
     const scelto = q('[data-esito]') ? q('[data-esito]').value : '';
     if(SENZA_MESSAGGIO.has(scelto)){
-      dentro.innerHTML = scelto === 'Richiede disiscrizione'
-        ? `<p class="nota-riga" style="margin:0">Ha chiesto di essere cancellato: non gli si manda più niente,
-           nemmeno il regalo.</p>`
-        : `<p class="nota-riga" style="margin:0">Scegli l'esito qui sopra e qui comparirà il messaggio da mandare.</p>`;
+      const spiegazioni = {
+        'Richiede disiscrizione': 'Ha chiesto di essere cancellato: non gli si manda più niente, nemmeno il regalo.',
+        'Altro operatore': 'Lo sta già seguendo qualcun altro: qui la lavorazione si chiude e non parte nessun messaggio.'
+      };
+      dentro.innerHTML = `<p class="nota-riga" style="margin:0">${
+        spiegazioni[scelto] || 'Scegli l\'esito qui sopra e qui comparirà il messaggio da mandare.'}</p>`;
       return;
     }
     const wa = messaggioPer('whatsapp'), em = messaggioPer('email');
@@ -1673,6 +1661,9 @@ function componiMessaggio(c, operatore, opzioni){
   /* «Da Ricontattare» dopo una risposta e' un appuntamento preso; senza
      risposta e' un contatto in attesa del secondo tentativo. */
   else if(esito === 'Da Ricontattare' && (o.esito || c.ultima_connessa !== false)){
+    /* Scelto nel modulo: avete parlato e vi siete dati un appuntamento. Al caso
+       «non ha risposto» ci si arriva dal pulsante rapido, che passa di qui con
+       tentativoAVuoto e non da questo ramo. */
                                     quale = 'appuntamento';           tipo = 'economy'; }
   else if(esito === 'Da Ricontattare'){
                                     quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
