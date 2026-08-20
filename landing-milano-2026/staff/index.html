@@ -767,7 +767,7 @@ async function apriScheda(id){
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
         <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
-          c.acquirente ? 'Email · benvenuto' : (c.promesso_non_pagato?'Email · riassunto e offerta':'Email')}</button>
+          esc(etichettaEmail(componiMessaggio(c, undefined, { canale:'email' })))}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
       </div>
 
@@ -910,7 +910,7 @@ async function apriScheda(id){
     el.classList.toggle('corto', serve && n < 20);
   };
   q('[data-note]').oninput = aggiornaContatore;
-  q('[data-esito]').onchange = aggiornaContatore;
+  q('[data-esito]').onchange = () => { aggiornaContatore(); aggiornaEtichetteMessaggi(); };
 
   /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
   if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
@@ -1069,8 +1069,31 @@ async function apriScheda(id){
   };
 
   /* ---- WhatsApp ed email: si apre il popup, non si spara il messaggio ---- */
-  q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId);
-  q('[data-email]').onclick = () => apriComposizione(c, 'email', chiamataId);
+  /* Il messaggio dipende dall'esito. Finché non si salva, l'esito «vero» è
+     quello nel menu: i pulsanti seguono quello, così si sa cosa si sta per
+     mandare prima di aprirlo. */
+  const esitoScelto = () => {
+    const sel = q('[data-esito]');
+    const v = sel ? sel.value : '';
+    /* Il menu parte su «Da Contattare» finché non si sceglie: in quel caso
+       vale ancora l'ultimo esito registrato, non un ritorno al primo messaggio. */
+    return (v && v !== 'Da Contattare') ? v : null;
+  };
+  const messaggioPer = canale => componiMessaggio(c, undefined, { canale, esito: esitoScelto() });
+
+  const aggiornaEtichetteMessaggi = () => {
+    q('[data-wa]').textContent    = etichettaMessaggio(messaggioPer('whatsapp'));
+    q('[data-email]').textContent = etichettaEmail(messaggioPer('email'));
+  };
+
+  q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId, null,
+                                     { messaggio: messaggioPer('whatsapp') });
+  q('[data-email]').onclick = () => apriComposizione(c, 'email', chiamataId, null,
+                                     { messaggio: messaggioPer('email') });
+
+  /* Una volta all'apertura: chi è maturo per il Forum ha già l'esito
+     preselezionato, e i pulsanti devono dirlo subito. */
+  aggiornaEtichetteMessaggi();
 }
 
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
@@ -1241,7 +1264,17 @@ function promessaScaduta(c){
   return new Date(String(c.profilazione_promessa_il) + 'T18:00:00') < new Date();
 }
 
-function dataImpegno(c){
+function dataImpegno(c, esito){
+  /* Chi ha un appuntamento telefonico ha una data e un'ora, e sono quelle che
+     contano — anche se il suo obiettivo è la profilazione, che di suo userebbe
+     l'altra data. Senza questo, dopo un «Ricontatto» su un contatto da
+     profilare non c'era nessuna data da mettere nel messaggio, e l'invio
+     restava bloccato. */
+  if((esito || c.ultimo_esito) === 'Ricontatto' && c.ricontatto_il){
+    const d = new Date(c.ricontatto_il);
+    return d.toLocaleDateString('it-IT',{weekday:'long', day:'numeric', month:'long'})
+         + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
+  }
   if(obiettivoPer(c) === 'profilazione'){
     const g = c.profilazione_promessa_il;
     if(!g) return null;
@@ -1388,6 +1421,20 @@ P.S. Ti ho tenuto da parte uno dei tre mesi di MigaMATCH completo in regalo — 
      Non contiene offerte ne' prezzi: chi lo riceve ha gia' comprato, e
      rivendergli qualcosa adesso e' il modo piu' rapido per fargli pensare
      di aver pagato troppo poco o troppo. */
+  /* La chiamata si è interrotta prima di arrivare in fondo e ci si è dati un
+     appuntamento. Non è un recap: non c'è nessun impegno da mettere per
+     iscritto, perché la proposta non è ancora stata fatta tutta. Scrivergli
+     «come da accordi farai l'iscrizione entro…» sarebbe attribuirgli una
+     promessa che non ha mai fatto. */
+  appuntamento: p =>
+`Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Grazie per prima — ci siamo interrotti a metà.
+
+Come d'accordo ti richiamo *${p.data}*: manca solo la parte che non siamo riusciti a vedere.
+
+Intanto ti lascio qui Economy, il numero di agosto, così ce l'hai a portata di mano: https://mssl.it/economy — a pagina 22 ci trovi noi.
+
+Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.`,
+
   benvenuto_acquisto: p =>
 `Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Benvenuto: il tuo posto per il *17 ottobre* c'è.
 
@@ -1415,6 +1462,7 @@ const OGGETTI = {
   email_promesso: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
   bene_profilazione: n => `${n}, il riassunto di quello che ci siamo detti`,
   bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
+  appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
 
@@ -1435,7 +1483,10 @@ function componiMessaggio(c, operatore, opzioni){
   const op = (operatore ?? io?.nome ?? '').trim();
   const brand = marchioPer(c);
   const obiettivo = obiettivoPer(c);
-  const esito = c.ultimo_esito || 'Da Contattare';
+  /* `o.esito` è quello selezionato adesso nel menu della scheda: serve perché i
+     pulsanti cambino testo mentre l'operatrice compila, senza dover prima
+     salvare per sapere cosa partirà. */
+  const esito = o.esito || c.ultimo_esito || 'Da Contattare';
 
   let quale, tentativo = 0, tipo;
   /* chi ha gia' pagato viene prima di tutto: a lui non si vende piu' niente,
@@ -1444,17 +1495,21 @@ function componiMessaggio(c, operatore, opzioni){
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
      lungo, quello che mette per iscritto evento, offerta e scadenza. */
   else if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
+  /* «Ricontatto» sta dentro ANDATA_BENE perché la telefonata ha avuto risposta,
+     ma non è un impegno preso: va prima, o si prenderebbe il recap sbagliato. */
+  else if(esito === 'Ricontatto'){  quale = 'appuntamento';           tipo = 'economy'; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
   else if(esito === 'Richiamata'){  quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
 
   const pacchetto = o.pacchetto === 'azienda' ? 'azienda' : 'base';
-  const data = dataImpegno(c);
+  const data = dataImpegno(c, esito);
   const prezzo = pacchetto === 'azienda' ? PACCHETTI.azienda.prezzo : prezzoDelGiorno();
   const edizione = edizioneForum(c);
 
   const mancano = [];
   if(quale.startsWith('bene_') && !data) mancano.push('data');
+  if(quale === 'appuntamento' && !data) mancano.push('data');
   if(quale === 'email_promesso' && !data) mancano.push('data');
   if((quale === 'bene_forum' || quale === 'email_promesso') && !prezzo) mancano.push('prezzo');
   if(quale === 'quattro_b' && !edizione) mancano.push('edizione');
@@ -1471,6 +1526,7 @@ function componiMessaggio(c, operatore, opzioni){
     quattro_c: 'secondo tentativo a vuoto · viene dagli Speed',
     bene_profilazione: 'recap dopo la chiamata · profilazione',
     bene_forum: 'recap dopo la chiamata · Forum',
+    appuntamento: 'chiamata a metà · appuntamento preso',
     email_promesso: 'ha detto di venire e non ha ancora comprato',
     benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
   };
@@ -1501,10 +1557,25 @@ function perchePuoMancare(m){
 }
 
 /* Etichetta del pulsante: dice quale messaggio sta per uscire. */
+/* Cosa parte, detto sul pulsante. Serve perché l'operatrice sappia quale
+   messaggio sta per mandare prima di aprirlo — e perché cambiando esito nel
+   menu cambia anche il messaggio, senza che nulla lo lasciasse capire. */
+const COSA_PARTE = {
+  benvenuto_acquisto: 'benvenuto e istruzioni',
+  bene_profilazione:  'recap e link del profilo',
+  bene_forum:         'recap e link del biglietto',
+  appuntamento:       'conferma dell\'appuntamento',
+  email_promesso:     'riassunto e offerta'
+};
+
 function etichettaMessaggio(m){
-  if(m.quale === 'benvenuto_acquisto') return 'WhatsApp · benvenuto';
-  if(m.quale.startsWith('bene_')) return 'WhatsApp · recap';
-  return 'WhatsApp n.' + m.tentativo;
+  const c = COSA_PARTE[m.quale];
+  return c ? 'WhatsApp · ' + c : 'WhatsApp n.' + m.tentativo;
+}
+
+function etichettaEmail(m){
+  const c = COSA_PARTE[m.quale];
+  return c ? 'Email · ' + c : 'Email';
 }
 
 /* Anche quello che parte fuori dal sistema resta scritto: senza, nessuno
