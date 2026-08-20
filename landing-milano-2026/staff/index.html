@@ -697,7 +697,11 @@ function disegnaTarget(fatte, meta, mia){
    stessa persona non triplica quell'occasione. */
 function disegnaConversione(dati, operatoreScelto){
   const box = $('#conversione');
-  if(!dati){ box.classList.add('nascosto'); return; }
+  if(!dati || dati.errore){
+    box.classList.add('nascosto');
+    if(dati && dati.errore) console.warn('conversione non calcolata:', dati.errore);
+    return;
+  }
 
   const mie = righe => (righe || []).filter(r =>
     operatoreScelto === 'tutti' || r.operatore_id === operatoreScelto);
@@ -780,7 +784,12 @@ async function caricaKpi(){
   try{
     kpiUltimi = await api('/kpi');
     disegnaKpi();
-  }catch(e){ $('#kpi').innerHTML = `<div class="chi">KPI non disponibili</div>`; }
+  }catch(e){
+    /* Il messaggio vero, non un generico «non disponibili»: senza, capire cosa
+       si e' rotto richiede di guardare i log del server. */
+    $('#kpi').innerHTML = `<div class="chi" title="${esc(e.message||'')}">KPI non disponibili — ${esc((e.message||'').slice(0,90))}</div>`;
+    console.error('KPI:', e);
+  }
 }
 
 /* Testata e barra guardano la stessa cosa che guarda la lista: se stai vedendo
@@ -817,7 +826,8 @@ function disegnaKpi(){
       eMia, etichetta: eMia ? '' : (nome || '')
     });
 
-    disegnaConversione(d.conversione, scelto);
+    try{ disegnaConversione(d.conversione, scelto); }
+    catch(e){ $('#conversione').classList.add('nascosto'); console.warn('conversione:', e); }
 
     const somma = c => righe.reduce((t,x) => t + Number(x[c] || 0), 0);
     const fatte = somma('chiamate'), connesse = somma('connesse');
