@@ -93,6 +93,26 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .azioni .btn{width:auto;padding:10px 16px}
 .contatore{font-size:.78rem;color:var(--tenue);text-align:right}
 .contatore.corto{color:var(--rosso);font-weight:700}
+
+/* ---------- CTA e campo da portare a casa ---------- */
+.pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
+.pill.cta-forum{background:#E2F1E8;color:#22603F}
+.pill.maturo{background:#FFF3D6;color:#8A6410}
+.campo-chiave{border:2px solid var(--gold);border-radius:10px;padding:10px;background:#FFFCF3}
+.campo-chiave label{color:var(--gold-dk)}
+.campo-chiave .serve{font-size:.76rem;color:var(--gold-dk);margin-top:4px;font-weight:700}
+.secondario{opacity:.62}
+
+/* ---------- popup di composizione ---------- */
+.composa{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:92vh;overflow:auto;
+         box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.composa .corpo{padding:18px}
+.composa textarea{min-height:210px;font-size:.92rem;line-height:1.5}
+.composa .a-chi{font-size:.85rem;color:var(--tenue);margin:0 0 10px}
+.nota-riga{font-size:.82rem;color:var(--tenue);margin:10px 0 0;padding:9px 11px;background:#F7F7FB;
+           border:1px solid var(--bordo);border-radius:8px}
+.nota-riga.attenzione{background:#FFF8E8;border-color:#F0DFB0;color:#7A5B12}
+.nota-riga.blocco{background:#FDECEC;border-color:#F3C9C9;color:#98292E;font-weight:700}
 @media(max-width:700px){.griglia{grid-template-columns:1fr}.kpi{width:100%;justify-content:space-between}}
 </style>
 
@@ -127,6 +147,8 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
     <span class="marchio">FORUM <span>RICONTATTI</span></span>
     <span class="chi" id="chi"></span>
     <select id="f-operatore" title="Di chi vuoi vedere la coda"></select>
+    <button class="btn nascosto" style="width:auto;padding:7px 12px;background:var(--gold);color:var(--ink)"
+            id="da-mandare" title="Messaggi che aspettano di essere mandati a mano"></button>
     <div class="kpi" id="kpi"></div>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
@@ -165,18 +187,26 @@ const CHIAVE   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const API      = URL_SUPA + '/functions/v1/ricontatti-api';
 const DEPOSITO = 'fc_ricontatti_sessione';
 
-const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Non può venire',
-               'Acquistato','Da NON chiamare','Altro operatore','Altro'];
+const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Ricontatto',
+               'Profilato - Call back','Non può venire','Acquistato','Da NON chiamare',
+               'Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
-const CONNESSI = new Set(['Ci pensa','Viene','Non può venire','Acquistato','Da NON chiamare','Altro operatore','Altro']);
+const CONNESSI = new Set(['Ci pensa','Viene','Ricontatto','Profilato - Call back','Non può venire',
+                          'Acquistato','Da NON chiamare','Altro operatore','Altro']);
+/* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
+   messaggio da mandare non è più quello di chi non risponde, è il recap. */
+const ANDATA_BENE = new Set(['Ci pensa','Viene','Ricontatto','Profilato - Call back']);
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Da NON chiamare','Non può venire','Altro operatore']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
+/* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
+   Decide se il popup propone l'invio automatico o si apre già in manuale.    */
+let capacitaOra = null;
 
 /* ═══════════════ utilità ═══════════════ */
 const $ = s => document.querySelector(s);
@@ -306,8 +336,9 @@ async function entra(){
   $('#chi').textContent = io.nome + (io.ruolo === 'admin' ? ' · amministratore'
                           : io.linea_migasender ? ' · linea ' + io.linea_migasender : '');
   ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
+  capacitaOra = { capacita: io.capacita, invio_automatico: io.invio_automatico, motivo: io.motivo };
   popolaOperatori();
-  await Promise.all([caricaCoda(true), caricaKpi()]);
+  await Promise.all([caricaCoda(true), caricaKpi(), caricaDaMandare()]);
 }
 
 /* L'elenco arriva da /login. Si accorpano gli omonimi: in `operatori` la stessa
@@ -391,7 +422,9 @@ function riga(r){
       <div class="chi-nome">${esc([r.nome,r.cognome].filter(Boolean).join(' ')) || '(senza nome)'}
         <span class="atti">${atti}</span>
         ${r.crm_consulente ? `<span class="pill crm">CRM · ${esc(r.crm_consulente)}</span>` : ''}
-        ${r.profilato ? '<span class="pill">profilato</span>' : ''}</div>
+        ${(r.profilato_ora ?? r.profilato) ? '<span class="pill">profilato</span>' : ''}
+        <span class="pill ${obiettivoPer(r)==='profilazione'?'cta-prof':'cta-forum'}">${obiettivoPer(r)==='profilazione'?'profilazione':'Forum'}</span>
+        ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}</div>
       <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
     </div>
     <div class="destra">
@@ -442,6 +475,10 @@ async function apriScheda(id){
   catch(e){ return alert(e.message); }
   const c = d.contatto, storico = d.chiamate || [];
   const msg = componiMessaggio(c);
+  const obiettivo = obiettivoPer(c);
+  /* la capacità si rilegge all'apertura della scheda: fra una chiamata e
+     l'altra il tetto orario può essersi chiuso */
+  api('/capacita').then(r => { capacitaOra = r; }).catch(()=>{});
 
   const velo = document.createElement('div');
   velo.className = 'velo';
@@ -459,7 +496,16 @@ async function apriScheda(id){
         <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
              ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
              ${c.atto1?' · 🖥️ Atto 1':''}${c.atto2?' · 🤝 Atto 2':''}
-             ${c.profilato?' · profilato su MigaMATCH':''}</div>
+             ${(c.profilato_ora ?? c.profilato)?' · profilato su MigaMATCH':''}
+             <span class="pill ${obiettivo==='profilazione'?'cta-prof':'cta-forum'}">${obiettivo==='profilazione'?'CTA: profilazione':'CTA: Forum'}</span>
+             ${c.pronto_per_forum?'<span class="pill maturo">pronto per il Forum</span>':''}</div>
+        <div style="margin-top:5px">${obiettivo==='profilazione'
+           ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
+           : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
+        ${c.pronto_per_forum ? `<div style="margin-top:5px">Si è profilato
+           ${c.profilato_il ? 'il ' + dataOra(c.profilato_il) : ''} dopo una nostra chiamata, e sono passati
+           più di sette giorni: è il momento del feedback e della proposta per il Forum.
+           L'esito da usare è <b>Profilato - Call back</b>.</div>`:''}
         ${c.crm_consulente ? `<div style="margin-top:5px">In trattativa CRM (<b>${esc(c.crm_stage||'')}</b>) seguita da
              <b>${esc(c.crm_consulente)}</b>${c.crm_consulente===io.nome?' — sei tu':' — coordinati prima di chiamare'}.</div>`:''}
         <div style="margin-top:5px">${c.n_chiamate||0} tentativi · ultimo esito <b>${esc(c.ultimo_esito||'Da Contattare')}</b>
@@ -478,8 +524,8 @@ async function apriScheda(id){
         <span class="cronometro" data-crono>05:00</span>
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
-        <button class="btn" data-wa ${c.telefono?'':'disabled'}>WhatsApp n.${msg.tentativo}</button>
-        <button class="btn" data-email ${c.email?'':'disabled'}>Email</button>
+        <button class="btn" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
+        <button class="btn ${c.promesso_non_pagato?'oro':''}" data-email ${c.email?'':'disabled'}>${c.promesso_non_pagato?'Email · riassunto e offerta':'Email'}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
       </div>
 
@@ -494,13 +540,15 @@ async function apriScheda(id){
             <select class="campo" data-obiezione><option value="">—</option>
               ${OBIEZIONI.map(o=>`<option>${esc(o)}</option>`).join('')}</select>
           </div>
-          <div>
+          <div class="${obiettivo==='forum'?'campo-chiave':'secondario'}">
             <label>Data di ricontatto</label>
             <input class="campo" type="datetime-local" data-ricontatto>
+            ${obiettivo==='forum'?'<div class="serve">È questa che devi portare a casa</div>':''}
           </div>
-          <div>
+          <div class="${obiettivo==='profilazione'?'campo-chiave':'secondario'}">
             <label>Profilazione promessa entro</label>
             <input class="campo" type="date" data-profilazione>
+            ${obiettivo==='profilazione'?'<div class="serve">È questa che devi portare a casa</div>':''}
           </div>
         </div>
         <label>Note sulla chiamata</label>
@@ -557,10 +605,18 @@ async function apriScheda(id){
   q('[data-note]').oninput = aggiornaContatore;
   q('[data-esito]').onchange = aggiornaContatore;
 
+  /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
+  if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
+  aggiornaContatore();
+
   q('[data-salva]').onclick = async () => {
     const esito = q('[data-esito]').value, note = q('[data-note]').value.trim();
     if(CONNESSI.has(esito) && note.length < 20)
       return avviso('[data-avviso-scheda]','Con questo esito la nota è obbligatoria: servono almeno 20 caratteri.');
+    /* «Ricontatto» e «Profilato - Call back» sono impegni con una data: senza,
+       il contatto sparirebbe in fondo alla coda invece di tornare quando serve. */
+    if((esito === 'Ricontatto' || esito === 'Profilato - Call back') && !q('[data-ricontatto]').value)
+      return avviso('[data-avviso-scheda]','Con questo esito serve la data di ricontatto: è l\'impegno che hai preso al telefono.');
     q('[data-salva]').disabled = true;
     const corpo = {
       esito, note: note || null,
@@ -610,11 +666,6 @@ async function apriScheda(id){
         ? 'Secondo tentativo a vuoto: il contatto si chiude con «Non risponde» e parte il WhatsApp n.2. Procedo?'
         : `Primo tentativo a vuoto: il contatto passa in «Richiamata» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})} e parte il WhatsApp n.1. Procedo?`)) return;
 
-    /* la finestra si apre nel gesto del clic, prima di qualunque attesa:
-       aperta più tardi verrebbe bloccata dal browser */
-    const numero = (c.telefono||'').replace(/\D/g,'');
-    if(numero) window.open(`https://wa.me/${numero}?text=${encodeURIComponent(m.testo)}`, '_blank', 'noopener');
-
     bottone.disabled = true;
     try{
       let id = chiamataId;
@@ -629,8 +680,11 @@ async function apriScheda(id){
         durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : 0,
         ricontatto_il: quando ? quando.toISOString() : null
       })});
-      await registraMessaggio(c, m, 'whatsapp', id);
-      chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+      /* il tentativo è registrato: ora si apre il messaggio già composto sullo
+         stato di prima, e l'operatrice decide se e come mandarlo */
+      apriComposizione(c, 'whatsapp', id, () => {
+        chiudi(); caricaCoda(true); caricaKpi();
+      }, { messaggio: m });
     }catch(e){ alert(e.message); bottone.disabled = false; }
   };
 
@@ -652,20 +706,9 @@ async function apriScheda(id){
     }catch(e){ alert(e.message); q('[data-ripristina]').disabled = false; }
   };
 
-  /* ---- WhatsApp ed email, con il testo giusto per lo stato del contatto ---- */
-  q('[data-wa]').onclick = () => {
-    const n = (c.telefono||'').replace(/\D/g,'');
-    if(!n) return;
-    window.open(`https://wa.me/${n}?text=${encodeURIComponent(msg.testo)}`, '_blank', 'noopener');
-    registraMessaggio(c, msg, 'whatsapp', chiamataId);
-  };
-
-  q('[data-email]').onclick = () => {
-    if(!c.email) return;
-    window.location.href = `mailto:${encodeURIComponent(c.email)}`
-      + `?subject=${encodeURIComponent(msg.oggetto)}&body=${encodeURIComponent(msg.testo)}`;
-    registraMessaggio(c, msg, 'email', chiamataId);
-  };
+  /* ---- WhatsApp ed email: si apre il popup, non si spara il messaggio ---- */
+  q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId);
+  q('[data-email]').onclick = () => apriComposizione(c, 'email', chiamataId);
 }
 
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
@@ -711,61 +754,486 @@ function prossimoGiornoLavorativo(da){
   return d;
 }
 
-/* L'obiettivo della telefonata non è lo stesso per tutti: sui BigBang non
-   profilati si punta alla profilazione, su tutti gli altri al Forum.         */
+/* L'obiettivo della telefonata lo dice il database, non la fascia.
+   `cta` si ricalcola a ogni lettura guardando se la persona ha completato
+   l'onboarding su MigaMATCH: chi si profila passa da PROFILAZIONE a FORUM da
+   solo, senza che nessuno tocchi niente. La fascia resta ferma a com'era ad
+   agosto, quindi dedurre da lì darebbe la risposta sbagliata il giorno dopo.  */
 function obiettivoPer(c){
-  return /bigbang non profilato/i.test(c.fascia || '') ? 'profilazione' : 'forum';
+  const cta = c.cta || (c.profilato_ora ?? c.profilato ? 'FORUM' : 'PROFILAZIONE');
+  return cta === 'FORUM' ? 'forum' : 'profilazione';
+}
+
+/* La data che l'operatrice ha portato a casa dalla chiamata, per esteso.
+   Quale sia dipende dalla CTA: chi deve profilarsi promette una data di
+   profilazione, chi punta al Forum dà una data di ricontatto per decidere.
+
+   Senza giorno della settimana, di proposito: nei messaggi la data sta sempre
+   dopo un articolo — «entro il [DATA]», «fino al [DATA]» — e «entro il giovedì
+   27 agosto» non è italiano. L'ora c'è quando c'è, perché la regola della
+   campagna è dire giorno e ora, mai «48 ore».                                */
+function dataImpegno(c){
+  if(obiettivoPer(c) === 'profilazione'){
+    const g = c.profilazione_promessa_il;
+    if(!g) return null;
+    return new Date(String(g) + 'T12:00:00').toLocaleDateString('it-IT',
+      {day:'numeric', month:'long'});
+  }
+  const t = c.ricontatto_il;
+  if(!t) return null;
+  const d = new Date(t);
+  return d.toLocaleDateString('it-IT',{day:'numeric', month:'long'})
+       + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
 }
 
 /* I testi sono quelli decisi dal cliente: non si riscrivono a mano qui.
-   [NOME] e [OPERATORE] sono gli unici pezzi che cambiano.                    */
+   Il grassetto è quello di WhatsApp, asterisco singolo: con i due asterischi
+   del markdown il contatto vedrebbe scritti gli asterischi.                  */
+
+const LINK_PROFILO = 'https://mssl.it/profilati';
+const PACCHETTI = {
+  base:    { sku:'MM_FORUM_MI_20261017',         etichetta:'Biglietto base' },
+  azienda: { sku:'MM_FORUM_MI_20261017_AZIENDA', etichetta:'Pacchetto azienda', prezzo:'599 €' }
+};
+const linkAcquisto = q => `https://auto.migamatch.com/shop?sku=${PACCHETTI[q].sku}`;
+
+/* Il prezzo non si scrive a memoria: si legge dal listino del giorno in cui si
+   manda il messaggio. Del listino è confermata solo la prima soglia — 159 €
+   fino al 31 agosto. Le date di passaggio a 179 € e a 199 € non sono state
+   ancora fissate, quindi oltre il 31 agosto questa funzione restituisce null e
+   il popup si rifiuta di mandare il messaggio: meglio fermarsi che scrivere a
+   migliaia di persone un prezzo indovinato.                                  */
+const LISTINO = [
+  { fino: '2026-08-31', prezzo: '159 €' }
+];
+function prezzoDelGiorno(quando){
+  const g = (quando ? new Date(quando) : new Date()).toISOString().slice(0,10);
+  for(const r of LISTINO) if(g <= r.fino) return r.prezzo;
+  return null;
+}
+
+/* Al secondo buco il messaggio non è uno solo: cambia con chi hai davanti.
+     4a  chi deve ancora profilarsi                      → brand MigaMATCH
+     4b  chi a un Forum c'è già stato, con l'edizione     → Segnalazione Vincente
+     4c  chi viene dagli Speed online                     → Segnalazione Vincente
+   L'edizione si legge dalle fonti; se ce n'è più di una vince la più recente,
+   perché è quella che il contatto ricorda: San Marino (nov 2025), Rimini
+   (mag 2025), Firenze prima ancora.                                          */
+function edizioneForum(c){
+  const f = (c.fonti || []).map(String);
+  if(f.includes('forum_rsm'))     return 'San Marino';
+  if(f.includes('forum_rimini'))  return 'Rimini';
+  if(f.includes('forum_firenze')) return 'Firenze';
+  return null;
+}
+
+function varianteSecondoBuco(c){
+  if(obiettivoPer(c) === 'profilazione') return 'quattro_a';
+  return edizioneForum(c) ? 'quattro_b' : 'quattro_c';
+}
+
+/* Su queste tre il brand lo decide la variante, non la provenienza: è la
+   mappatura che ha dato il cliente, e il brand del messaggio deve restare
+   quello con cui ci si è presentate al telefono.                             */
+const BRAND_VARIANTE = {
+  quattro_a: 'MigaMATCH',
+  quattro_b: 'Segnalazione Vincente',
+  quattro_c: 'Segnalazione Vincente'
+};
+
 const TESTI = {
-  primo: (nome, op) =>
-    `Ciao ${nome}, sono ${op} di MigaMATCH Segnalazione Vincente, ti ho provato a chiamare perché avevo un regalo per te da darti, molto utile per la tua attività. Quando possiamo sentirci? Ti richiamo domani, salva il mio numero. Ciao e buon lavoro. ${op}`,
-  secondo_profilazione: (nome, op) =>
-    `Ciao ${nome}, sono di nuovo ${op} ho provato a richiamarti purtroppo senza successo. Per prima cosa volevo darti un regalo, la copia di agosto di Economy https://mssl.it/economy22. Inoltre volevo solo dirti che ho guardato il tuo profilo e abbiamo persone interessate a creare sinergie con te, per ricevere gratuitamente il tuo contatto e fare un primo match il nostro algoritmo ha bisogno di sapere chi sei in specifico, investi 10 minuti e profilati è gratuito https://mssl.it/profilati . Una curiosità, come mai non hai proceduto fino ad ora? Il tuo feedback per me è prezioso. Buon lavoro intanto`,
-  secondo_forum: (nome, op) =>
-    `Ciao ${nome}, sono di nuovo ${op} ho provato a richiamarti purtroppo senza successo. Per prima cosa volevo darti un regalo, la copia di agosto di Economy https://mssl.it/economy22. Inoltre volevo solo dirti che ho guardato il tuo profilo e ci piacerebbe che tu partecipi al Forum Connections di Milano il 17 ottobre, dove conoscerai 42 persone in target di alto livello. Potrebbe interessarti? Se avessi un'offerta riservata per te la vorresti sapere?`
+  primo: p =>
+    `Ciao ${p.nome}, sono ${p.op} di MigaMATCH Segnalazione Vincente, ti ho provato a chiamare perché avevo un regalo per te da darti, molto utile per la tua attività. Quando possiamo sentirci? Ti richiamo domani, salva il mio numero. Ciao e buon lavoro. ${p.op}`,
+
+  quattro_a: p =>
+`Ciao ${p.nome}, sono ${p.op} di MigaMATCH. Ti ho cercato al telefono ma ti ho preso in un brutto momento, immagino.
+Ti scrivo il motivo in tre righe: il tuo profilo su MigaMATCH è rimasto a metà, e finché è così l'algoritmo non ti può presentare a nessuno. Completarlo sono dieci minuti e da lì partono i match: persone scelte su oltre 4 milioni di parametri, non contatti a caso. Se vuoi testarlo gratuitamente, 10 minuti investiti bene: vai qui https://mssl.it/profilati
+Intanto ti lascio un regalo, la copia di Economy di agosto — a pagina 22 ci siamo noi: https://mssl.it/economy
+Se mi dici quando ti fa comodo, ti richiamo io.`,
+
+  quattro_b: p =>
+`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ti ho cercato ma non ti ho trovato.
+Ti scrivo perché al Forum di ${p.edizione} c'eri, e il *17 ottobre siamo a Milano* con un'edizione diversa da tutte le precedenti: i tavoli non li componiamo più noi a mano, li calcola MigaMATCH incrociando oltre 4 milioni di parametri. Sei round, 42 persone, pranzo incluso.
+Ti lascio anche la copia di Economy di agosto, è un regalo: https://mssl.it/economy
+Se ti va di sentirci due minuti, dimmi tu quando, ho una proposta speciale da farti.`,
+
+  quattro_c: p =>
+`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ti ho cercato al telefono senza fortuna, provo qui.
+Il *17 ottobre a Milano* portiamo dal vivo quello che hai già visto online: una giornata intera, sei round, 42 persone conosciute — e chi ti siede accanto lo decide un algoritmo, non il caso. Pranzo incluso.
+Intanto un regalo: Economy di agosto, a pagina 22 ci siamo noi. https://mssl.it/economy
+Se mi dici un orario buono ti richiamo io, cinque minuti, ho una proposta riservata da farti.`,
+
+  email_promesso: p =>
+`Ciao ${p.nome},
+
+ti scrivo il riassunto della telefonata di oggi, così resta scritto da qualche parte.
+
+L'EVENTO
+Forum Connections — sabato 17 ottobre 2026, dalle 9.00 alle 19.30
+UNA Hotels Expo Fiera Milano, Via Giovanni Keplero 12, 20016 Pero (MI)
+Sei round di speed meeting, 42 persone conosciute nella giornata, pranzo incluso.
+I tavoli non sono composti a mano: li calcola MigaMATCH incrociando oltre 4 milioni di parametri, e a ogni possibile coppia di partecipanti assegna un punteggio da 1 a 10. I concorrenti restano lontani, i profili complementari finiscono allo stesso tavolo.
+La sala è da 350 posti. Il sito è questo: www.forumconnections.com
+L'offerta che ti ho riservato è un abbonamento MigaMATCH di 3 mesi con 9 persone in target garantite e match illimitati, del valore di 90 euro, in omaggio per te. Ne abbiamo solo 50 in tutto e li gestiamo a mano: il tuo lo blocco fino al ${p.data}.
+
+QUELLO CHE CI SIAMO DETTI
+Come da accordi mi hai confermato che riuscirai a fare l'iscrizione e accaparrarti l'offerta dei 3 mesi MigaMATCH entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là, ma perderai l'offerta.
+
+IL TUO LINK PERSONALE
+${p.link} — prezzo in vigore oggi: ${p.prezzo}, pranzo incluso.
+
+IL REGALO DI CUI TI PARLAVO
+La copia di Economy di agosto, l'inserto del Sole 24 Ore: https://mssl.it/economy — a pagina 22 ci trovi noi.
+
+Se ti viene un dubbio, rispondi a questa mail o scrivimi su WhatsApp: rispondo io.
+
+${p.op}
+${p.brand}`,
+
+  bene_profilazione: p =>
+`Ciao ${p.nome}, grazie per il tempo di poco fa — ${p.op} di ${p.brand}.
+
+Ti riassumo così restiamo allineati: come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${p.data}*, se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ci sentiremo tra un mesetto per un feedback su come è andata con i tuoi match.
+
+Qui c'è il link, sono dieci minuti dal telefono: ${p.linkProfilo}
+
+A presto!`,
+
+  bene_forum: p =>
+`Ciao ${p.nome}, grazie della chiacchierata — ${p.op} di ${p.brand}.
+
+Ti scrivo il riassunto così ce l'hai nero su bianco. *Forum Connections, sabato 17 ottobre, dalle 9 alle 19.30*, UNA Hotels Expo Fiera, Via Giovanni Keplero 12, Pero (MI). Sei round, 42 persone conosciute, pranzo incluso. La sala è da 350 posti.
+
+Come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${p.data}*: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là.
+
+Il tuo link personale, prezzo di oggi ${p.prezzo}: ${p.link}
+
+P.S. Ti ho tenuto da parte uno dei tre mesi di MigaMATCH completo in regalo — *ne abbiamo solo 50 in tutto* e li gestiamo a mano. Il tuo lo blocco fino al ${p.data}.`
 };
 
 const OGGETTI = {
-  primo: nome => `${nome}, ti ho cercato al telefono: avevo un regalo per te`,
-  secondo_profilazione: nome => `${nome}, il regalo di Economy e il tuo profilo MigaMATCH`,
-  secondo_forum: nome => `${nome}, il regalo di Economy e il Forum Connections del 17 ottobre`
+  primo: n => `${n}, ti ho cercato al telefono: avevo un regalo per te`,
+  quattro_a: n => `${n}, il tuo profilo MigaMATCH e il regalo di Economy`,
+  quattro_b: n => `${n}, il Forum Connections del 17 ottobre a Milano`,
+  quattro_c: n => `${n}, il 17 ottobre a Milano, dal vivo`,
+  email_promesso: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
+  bene_profilazione: n => `${n}, il riassunto di quello che ci siamo detti`,
+  bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`
 };
 
-/* Decide da sola quale dei due messaggi tocca: se il contatto è già in
-   «Richiamata» il primo è già partito, quindi tocca il secondo.
-   Restituisce anche il tipo con cui registrare l'invio: il database ammette
-   solo recap · promemoria · economy · benvenuto, e il n.1 (che annuncia il
-   richiamo) è un promemoria, il n.2 (che porta il regalo) è economy.         */
-function componiMessaggio(c, operatore){
+/* Sceglie da sola il messaggio giusto guardando come è finita l'ultima chiamata
+   e qual è l'obiettivo della persona:
+
+     ha risposto e ha preso un impegno  → il recap, con la data che ha dato
+     non ha risposto ed è già in coda   → il n.2, con il regalo di Economy
+     non ha risposto la prima volta     → il n.1, che annuncia il richiamo
+
+   `mancano` elenca i segnaposto che non si è riusciti a riempire. Il popup lo
+   legge e blocca l'invio: un messaggio con un buco è peggio di nessun messaggio.
+   Il tipo serve a registrare l'invio, e il database ne ammette solo quattro:
+   recap · promemoria · economy · benvenuto.                                  */
+function componiMessaggio(c, operatore, opzioni){
+  const o = opzioni || {};
   const nome = (c.nome || '').trim() || 'ciao';
   const op = (operatore ?? io?.nome ?? '').trim();
-  const primo = (c.ultimo_esito || 'Da Contattare') !== 'Richiamata';
+  const brand = marchioPer(c);
   const obiettivo = obiettivoPer(c);
-  const quale = primo ? 'primo' : ('secondo_' + obiettivo);
-  return {
-    quale,
-    obiettivo,
-    tentativo: primo ? 1 : 2,
-    tipo: primo ? 'promemoria' : 'economy',
-    oggetto: OGGETTI[quale](nome),
-    testo: TESTI[quale](nome, op)
+  const esito = c.ultimo_esito || 'Da Contattare';
+
+  let quale, tentativo = 0, tipo;
+  /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
+     lungo, quello che mette per iscritto evento, offerta e scadenza. */
+  if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
+  else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
+  else if(esito === 'Richiamata'){  quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
+  else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
+
+  const pacchetto = o.pacchetto === 'azienda' ? 'azienda' : 'base';
+  const data = dataImpegno(c);
+  const prezzo = pacchetto === 'azienda' ? PACCHETTI.azienda.prezzo : prezzoDelGiorno();
+  const edizione = edizioneForum(c);
+
+  const mancano = [];
+  if(quale.startsWith('bene_') && !data) mancano.push('data');
+  if(quale === 'email_promesso' && !data) mancano.push('data');
+  if((quale === 'bene_forum' || quale === 'email_promesso') && !prezzo) mancano.push('prezzo');
+  if(quale === 'quattro_b' && !edizione) mancano.push('edizione');
+
+  const p = { nome, op, edizione,
+              brand: BRAND_VARIANTE[quale] ?? brand,
+              data, prezzo, link: linkAcquisto(pacchetto), linkProfilo: LINK_PROFILO };
+  const testo = TESTI[quale](p);
+  const TITOLI = {
+    primo: 'primo tentativo a vuoto',
+    quattro_a: 'secondo tentativo a vuoto · profilo da completare',
+    quattro_b: 'secondo tentativo a vuoto · è già stato a un Forum',
+    quattro_c: 'secondo tentativo a vuoto · viene dagli Speed',
+    bene_profilazione: 'recap dopo la chiamata · profilazione',
+    bene_forum: 'recap dopo la chiamata · Forum',
+    email_promesso: 'ha detto di venire e non ha ancora comprato'
   };
+
+  return {
+    quale, obiettivo, tentativo, tipo, pacchetto, mancano, data, prezzo, edizione,
+    titolo: TITOLI[quale],
+    brand: p.brand,
+    oggetto: OGGETTI[quale](nome),
+    testo,
+    /* nell'email il grassetto di WhatsApp non si vede: si toglie */
+    testoEmail: testo.replace(/\*([^*\n]+)\*/g, '$1')
+  };
+}
+
+/* Il perché il messaggio manca, detto all'operatrice come lo direbbe una persona. */
+function perchePuoMancare(m){
+  const q = [];
+  if(m.mancano.includes('data'))
+    q.push(m.obiettivo === 'profilazione'
+      ? 'manca la data di profilazione promessa: registrala nella chiamata e torna qui'
+      : 'manca la data di ricontatto: registrala nella chiamata e torna qui');
+  if(m.mancano.includes('prezzo'))
+    q.push('manca il prezzo di listino per oggi: il listino è confermato solo fino al 31 agosto, chiedi a Oscar prima di mandare');
+  if(m.mancano.includes('edizione'))
+    q.push('non risulta a quale Forum abbia partecipato: controlla le fonti del contatto');
+  return q.join(' · ');
+}
+
+/* Etichetta del pulsante: dice quale messaggio sta per uscire. */
+function etichettaMessaggio(m){
+  if(m.quale.startsWith('bene_')) return 'WhatsApp · recap';
+  return 'WhatsApp n.' + m.tentativo;
 }
 
 /* L'invio resta manuale (wa.me / mailto), ma resta anche scritto: senza questo
    nessuno saprebbe più chi ha ricevuto cosa.                                 */
-async function registraMessaggio(c, m, canale, chiamataId){
+/* `aMano` distingue l'invio partito da wa.me o dal client di posta da quello
+   passato per la linea Migasender: nei conteggi devono esserci entrambi, ma
+   solo il secondo consuma il tetto del provider. Se il messaggio esisteva già
+   — è un promemoria che aspettava una mano — si aggiorna quella riga invece di
+   crearne una seconda.                                                       */
+async function registraMessaggio(c, m, canale, chiamataId, testo, aMano, messaggioId){
+  const corpo = testo ?? (canale === 'email' ? m.testoEmail : m.testo);
+  const finale = canale === 'email' ? (m.oggetto + '\n\n' + corpo) : corpo;
   try{
-    await api('/messaggio', { method:'POST', body: JSON.stringify({
-      contatto_id: c.id, tipo: m.tipo, canale,
-      chiamata_id: chiamataId ?? null,
-      testo: canale === 'email' ? (m.oggetto + '\n\n' + m.testo) : m.testo
-    })});
+    if(messaggioId){
+      await api('/messaggio/' + messaggioId, { method:'PATCH', body: JSON.stringify({ testo: finale }) });
+    }else{
+      await api('/messaggio', { method:'POST', body: JSON.stringify({
+        contatto_id: c.id, tipo: m.tipo, canale,
+        chiamata_id: chiamataId ?? null,
+        a_mano: aMano === true,
+        testo: finale
+      })});
+    }
   }catch(e){ console.warn('invio non registrato:', e.message); }
 }
+
+/* ═══════════════ popup di composizione ═══════════════
+   Il pulsante non apre più wa.me di scatto: apre questo, dove il testo è
+   modificabile. Quello che parte è quello che c'è nel campo, non il template:
+   se l'operatrice adatta una frase, deve partire la sua.
+
+   L'invio automatico passa dal server (linea Migasender dell'operatrice). Se le
+   linee sono al limite o bloccate non si prova nemmeno: si apre già in modo
+   manuale, spiegando perché. Il ripiego a mano resta comunque sempre
+   disponibile, perché a volte serve e basta.                                  */
+function apriComposizione(c, canale, chiamataId, dopo, opzioni){
+  /* `opzioni.messaggio` serve quando l'esito è appena stato registrato: il testo
+     è stato composto prima, sullo stato di allora, e ricomporlo adesso darebbe
+     quello del giro successivo. `opzioni.messaggioId` è la riga già in attesa,
+     quando si apre un promemoria rimasto da mandare a mano.                   */
+  opzioni = opzioni || {};
+  const m = opzioni.messaggio || componiMessaggio(c, undefined, { canale });
+  const destinatario = canale === 'email' ? (c.email || '') : (c.telefono || '');
+  const bloccato = m.mancano.length > 0;
+
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.style.zIndex = 60;
+  velo.innerHTML = `
+   <div class="composa">
+    <header>
+      <span class="marchio">${canale === 'email' ? 'EMAIL' : 'WHATSAPP'}</span>
+      <span class="chi" data-quale></span>
+      <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
+    </header>
+    <div class="corpo">
+      <p class="a-chi">A <b>${esc([c.nome,c.cognome].filter(Boolean).join(' ')) || 'questo contatto'}</b>
+         · ${esc(destinatario || 'nessun recapito')}</p>
+
+      ${canale === 'email' ? `<label>Oggetto</label>
+        <input class="campo" data-oggetto value="${esc(m.oggetto)}">` : ''}
+
+      ${(m.quale === 'bene_forum' || m.quale === 'email_promesso') ? `<label>Cosa gli stai proponendo</label>
+        <select class="campo" data-pacchetto>
+          <option value="base">Biglietto base — prezzo del listino di oggi</option>
+          <option value="azienda">Pacchetto azienda — 599 €</option>
+        </select>` : ''}
+
+      <label>Testo del messaggio</label>
+      <textarea data-testo></textarea>
+
+      <div data-motivo></div>
+
+      <div class="azioni">
+        <button class="btn oro" data-invia>Invia dalla linea ${io?.linea_migasender ? io.linea_migasender : 'Migasender'}</button>
+        <button class="btn" data-mano>${canale === 'email' ? 'Apri nel programma di posta' : 'Invia a mano con WhatsApp Web'}</button>
+      </div>
+
+      ${canale === 'email' ? '' : `<p class="nota-riga">Mandandolo a mano parte dal tuo numero personale, non dalla
+        linea Migasender: il contatto se lo vede arrivare da un numero diverso da quello che userebbe per
+        risponderti, e la conversazione si divide su due numeri.</p>`}
+      <div data-esito-invio></div>
+    </div>
+   </div>`;
+  document.body.appendChild(velo);
+
+  const q = s => velo.querySelector(s);
+  const chiudi = () => velo.remove();
+  q('[data-chiudi]').onclick = chiudi;
+  velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
+
+  /* ridisegna testo, etichette e blocchi: serve anche quando cambia il pacchetto */
+  let corrente = m;
+  function ridisegna(){
+    q('[data-quale]').textContent = corrente.titolo ?? (corrente.quale.startsWith('bene_')
+      ? 'recap dopo la chiamata · ' + corrente.obiettivo
+      : `tentativo n.${corrente.tentativo} · ${corrente.obiettivo}`);
+    q('[data-testo]').value = canale === 'email' ? corrente.testoEmail : corrente.testo;
+    if(q('[data-oggetto]')) q('[data-oggetto]').value = corrente.oggetto;
+
+    const manca = corrente.mancano.length > 0;
+    q('[data-motivo]').innerHTML = manca
+      ? `<p class="nota-riga blocco">Non posso mandarlo così — ${esc(perchePuoMancare(corrente))}.</p>`
+      : (canale === 'whatsapp' && capacitaOra && !capacitaOra.invio_automatico
+          ? `<p class="nota-riga attenzione">${esc(capacitaOra.motivo || 'Le linee non sono disponibili.')}
+             Si manda a mano.</p>`
+          : '');
+    const autoOk = !manca && (canale === 'email' ? false : (capacitaOra ? capacitaOra.invio_automatico : true));
+    q('[data-invia]').disabled = !autoOk;
+    q('[data-invia]').style.display = canale === 'email' ? 'none' : '';
+    q('[data-mano]').disabled = manca;
+  }
+  ridisegna();
+
+  if(q('[data-pacchetto]')) q('[data-pacchetto]').onchange = (e) => {
+    corrente = componiMessaggio(c, undefined, { pacchetto: e.target.value, canale });
+    ridisegna();
+  };
+
+  const testoScelto = () => q('[data-testo]').value.trim();
+
+  /* invio dal server: il testo che parte è quello del campo */
+  q('[data-invia]').onclick = async () => {
+    const testo = testoScelto();
+    if(!testo) return;
+    q('[data-invia]').disabled = true;
+    avviso('[data-esito-invio]', 'Invio in corso…', 'ok');
+    try{
+      const r = await api('/invia', { method:'POST', body: JSON.stringify({
+        contatto_id: c.id, tipo: corrente.tipo, testo, chiamata_id: chiamataId ?? null })});
+      if(r.inviato){
+        avviso('[data-esito-invio]', 'Inviato dalla linea Migasender.' + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
+        if(dopo) dopo();
+        setTimeout(chiudi, 1200);
+      }else{
+        avviso('[data-esito-invio]',
+          (r.motivo || 'Invio automatico non riuscito.') + ' Mandalo a mano qui sotto.');
+        q('[data-invia]').disabled = true;
+      }
+    }catch(e){
+      avviso('[data-esito-invio]', e.message + ' Mandalo a mano qui sotto.');
+      q('[data-invia]').disabled = true;
+    }
+  };
+
+  /* ripiego manuale: si apre wa.me o il client di posta, e si registra lo stesso */
+  q('[data-mano]').onclick = () => {
+    const testo = testoScelto();
+    if(!testo) return;
+    if(canale === 'email'){
+      const oggetto = q('[data-oggetto]') ? q('[data-oggetto]').value : corrente.oggetto;
+      if(!c.email) return avviso('[data-esito-invio]', 'Questo contatto non ha un indirizzo email.');
+      window.location.href = `mailto:${encodeURIComponent(c.email)}`
+        + `?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(testo)}`;
+    }else{
+      const n = (c.telefono || '').replace(/\D/g,'');
+      if(!n) return avviso('[data-esito-invio]', 'Questo contatto non ha un numero di telefono.');
+      window.open(`https://wa.me/${n}?text=${encodeURIComponent(testo)}`, '_blank', 'noopener');
+    }
+    registraMessaggio(c, corrente, canale, chiamataId, testo, true, opzioni.messaggioId);
+    avviso('[data-esito-invio]', 'Segnato come inviato a mano.', 'ok');
+    if(dopo) dopo();
+  };
+}
+
+/* ═══════════════ messaggi rimasti da mandare a mano ═══════════════
+   Ci finiscono i promemoria che il cron della mattina non ha potuto spedire
+   perché le linee Migasender erano al limite o bloccate, più tutto quello che
+   è scaduto in coda. Il tetto vale solo per gli invii dal provider: mandati a
+   mano non consumano niente, quindi qui non si perde niente — basta che
+   qualcuno se ne accorga, ed è per questo che il pulsante sta in testata.    */
+let daMandare = [];
+
+async function caricaDaMandare(){
+  try{
+    const d = await api('/da-mandare');
+    daMandare = d.righe || [];
+  }catch(e){ daMandare = []; }
+  const b = $('#da-mandare');
+  b.textContent = daMandare.length + ' da mandare a mano';
+  b.classList.toggle('nascosto', daMandare.length === 0);
+}
+
+function apriDaMandare(){
+  if(daMandare.length === 0) return;
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  velo.innerHTML = `
+   <div class="scheda">
+    <header>
+      <span class="marchio">DA MANDARE A MANO</span>
+      <span class="chi">${daMandare.length} messaggi</span>
+      <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
+    </header>
+    <div class="corpo">
+      <p class="nota-riga">Le linee Migasender erano al limite quando questi dovevano partire. Mandarli da
+      WhatsApp Web non consuma il tetto, quindi si possono smaltire tutti — ma partono dal tuo numero
+      personale, non dalla linea.</p>
+      ${daMandare.map(m => `
+        <div class="riga" data-messaggio="${m.id}" style="cursor:pointer">
+          <div>
+            <div class="chi-nome">${esc([m.nome,m.cognome].filter(Boolean).join(' ')) || '(senza nome)'}</div>
+            <div class="meta">${esc(m.telefono || m.destinatario || '—')} · ${esc(m.tipo)}
+              ${m.operatore ? ' · ' + esc(m.operatore) : ''}</div>
+            ${m.errore ? `<div class="meta" style="color:var(--gold-dk)">${esc(m.errore)}</div>` : ''}
+          </div>
+          <div class="destra">${dataOra(m.creato_il)}</div>
+        </div>`).join('')}
+    </div>
+   </div>`;
+  document.body.appendChild(velo);
+  const chiudi = () => velo.remove();
+  velo.querySelector('[data-chiudi]').onclick = chiudi;
+  velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
+
+  velo.addEventListener('click', e => {
+    const r = e.target.closest('[data-messaggio]');
+    if(!r) return;
+    const m = daMandare.find(x => String(x.id) === r.dataset.messaggio);
+    if(!m) return;
+    /* il testo è già quello scritto dal cron: non si ricompone, si riapre */
+    apriComposizione(
+      { id:m.contatto_id, nome:m.nome, cognome:m.cognome, telefono:m.telefono, email:m.email },
+      m.canale || 'whatsapp', null,
+      () => { caricaDaMandare().then(()=>{ chiudi(); }); },
+      { messaggioId: m.id, messaggio: {
+          quale:'in_attesa', titolo:'promemoria rimasto in sospeso', obiettivo:'', tentativo:0,
+          tipo:m.tipo, mancano:[], oggetto:'Promemoria', testo:m.testo, testoEmail:m.testo } });
+  });
+}
+
+$('#da-mandare').onclick = apriDaMandare;
 
 /* ═══════════════ pausa ═══════════════ */
 $('#pausa').onclick = async () => {
