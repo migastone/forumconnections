@@ -97,6 +97,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .contatore.corto{color:var(--rosso);font-weight:700}
 
 /* ---------- CTA e campo da portare a casa ---------- */
+.tratti{font-size:1.02rem;font-weight:700;color:var(--navy);margin-bottom:6px}
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
@@ -498,6 +499,13 @@ async function apriScheda(id){
      l'altra il tetto orario può essersi chiuso */
   api('/capacita').then(r => { capacitaOra = r; }).catch(()=>{});
 
+  /* Chi hai davanti, detto prima di tutto il resto: ruolo, settore, azienda.
+     Arrivano vivi da PROD, quindi chi completa il profilo oggi se li ritrova in
+     scheda alla chiamata dopo. Se non c'e' niente la riga sparisce: una riga di
+     trattini non dice niente e ruba spazio a quello che conta. */
+  const tratti = [c.ruolo, c.settore, c.azienda]
+    .map(x => (x || '').trim()).filter(Boolean);
+
   const velo = document.createElement('div');
   velo.className = 'velo';
   velo.innerHTML = `
@@ -511,6 +519,7 @@ async function apriScheda(id){
     <div class="corpo">
 
       <div class="recap">
+        ${tratti.length ? `<div class="tratti">${tratti.map(esc).join(' · ')}</div>` : ''}
         <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
              ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
              ${c.atto1?' · 🖥️ Atto 1':''}${c.atto2?' · 🤝 Atto 2':''}
