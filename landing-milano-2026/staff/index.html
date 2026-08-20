@@ -205,23 +205,27 @@ const CHIAVE   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const API      = URL_SUPA + '/functions/v1/ricontatti-api';
 const DEPOSITO = 'fc_ricontatti_sessione';
 
+/* «Da NON chiamare» teneva insieme due cose diverse, e vanno trattate diverse:
+   «Non interessato» è un lead chiuso e si archivia, «Richiede disiscrizione» è
+   una richiesta di cancellazione e toglie la persona dalla lista per sempre. */
 const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Ricontatto',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
-               'Da NON chiamare','Altro operatore','Altro'];
+               'Non interessato','Richiede disiscrizione','Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
 const CONNESSI = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
-                          'Profilato - Call back','Non può venire',
-                          'Acquistato','Da NON chiamare','Altro operatore','Altro']);
+                          'Profilato - Call back','Non può venire','Acquistato',
+                          'Non interessato','Richiede disiscrizione','Altro operatore','Altro']);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
 const ANDATA_BENE = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
                              'Profilato - Call back']);
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
-const TERMINALI = new Set(['Acquistato','Da NON chiamare','Non può venire','Altro operatore']);
+const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
+                           'Non può venire','Altro operatore']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 /* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
@@ -686,6 +690,16 @@ async function apriScheda(id){
        di recap. Senza, la promessa non scade mai e nessuno lo richiama. */
     if(esito === 'Promette Profilazione' && !q('[data-profilazione]').value)
       return avviso('[data-avviso-scheda]','Con questo esito serve la data entro cui si profila: è la promessa che ti ha fatto al telefono.');
+    /* La cancellazione non si annulla dalla pagina: il contatto esce dalla lista
+       e non ci rientra. Meglio una domanda in più che una persona tolta per
+       errore — o una che ha chiesto di sparire e continua a ricevere chiamate. */
+    if(esito === 'Richiede disiscrizione' && !confirm(
+        `${(c.nome||'Questo contatto').trim()} ha chiesto di essere cancellato.\n\n`
+      + `OK — esce dalla lista e non ci rientra piu'.\n`
+      + `Annulla — torno indietro.\n\n`
+      + `Se voleva solo dire che non gli interessa, usa «Non interessato».`)) {
+      return;
+    }
     q('[data-salva]').disabled = true;
     const corpo = {
       esito, note: note || null,
