@@ -45,13 +45,7 @@ header{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-it
        flex-wrap:wrap;position:sticky;top:0;z-index:30}
 header .marchio{font-weight:800;letter-spacing:.03em}
 header .marchio span{color:var(--gold)}
-.kpi{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-.kpi.nascosto{display:none}
-#apri-kpi{margin-left:auto;background:#3A3168;color:#fff;border:0;border-radius:7px;
-  padding:7px 12px;font-weight:700;font-size:.8rem;letter-spacing:.03em;cursor:pointer;white-space:nowrap}
-#apri-kpi:hover{background:#4A4180}
-#apri-kpi .freccia{display:inline-block;transition:transform .15s;margin-right:5px}
-#apri-kpi.aperto .freccia{transform:rotate(90deg)}
+.kpi{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;align-items:center}
 .kpi div{text-align:center;min-width:62px}
 .kpi b{display:block;font-size:1.12rem;line-height:1.1}
 .kpi small{color:#B9B4D8;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
@@ -115,8 +109,15 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   transition:left .6s ease;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
 .pista .arrivo{position:absolute;right:-2px;top:-17px;font-size:1.1rem;line-height:1}
 .target.fatto-tutto{border-color:var(--gold);background:#FFFCF3}
-.conv{margin:0 0 14px;padding:12px 16px;border:1px solid var(--bordo);border-radius:12px;background:#fff}
-.conv h4{margin:0 0 10px;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--tenue)}
+.conv{margin:0 0 14px;border:1px solid var(--bordo);border-radius:12px;background:#fff}
+.conv>summary{cursor:pointer;padding:11px 16px;font-size:.78rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--tenue);font-weight:700;list-style:none}
+.conv>summary::-webkit-details-marker{display:none}
+.conv>summary::marker{content:''}
+.conv>summary::before{content:'▸';display:inline-block;width:14px;transition:transform .15s}
+.conv[open]>summary::before{transform:rotate(90deg)}
+.conv>summary:hover{color:var(--navy)}
+.conv .dentro{padding:0 16px 14px}
 .conv table{width:100%;border-collapse:collapse;font-size:.9rem}
 .conv th{text-align:right;font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;
   color:var(--tenue);font-weight:700;padding:0 0 6px}
@@ -150,6 +151,13 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .testo-script .obz{margin:0 0 10px}
 .testo-script .obz b{display:block;color:var(--navy)}
 .mantenuta{color:#22603F;font-weight:700}
+/* La profilazione arrivata dopo la nostra chiamata e' la cosa piu' importante
+   che possa esserci in una scheda: se e' una riga fra le altre, non si vede. */
+.fatta{margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#E2F1E8;
+  border:1px solid #B5DCC5;color:#1B5137;font-size:.93rem;line-height:1.4}
+.fatta b{color:#14402A}
+.evento-prof{border-top:1px solid var(--bordo);padding:8px 0;font-size:.86rem;
+  color:#22603F;font-weight:700}
 .sosia{margin:12px 0 0;padding:12px 14px;border:1px solid #E8C98F;border-radius:10px;background:#FFFBF2}
 .sosia h4{margin:0 0 4px;font-size:.92rem;color:#8A6A17}
 .sosia p{margin:0 0 10px;font-size:.87rem;color:var(--tenue)}
@@ -214,8 +222,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
     <select id="f-operatore" title="Di chi vuoi vedere la coda"></select>
     <button class="btn nascosto" style="width:auto;padding:7px 12px;background:var(--gold);color:var(--ink)"
             id="da-mandare" title="Messaggi che aspettano di essere mandati a mano"></button>
-    <button id="apri-kpi" title="Mostra o nascondi i numeri della giornata"><span class="freccia">▸</span>Numeri di oggi</button>
-    <div class="kpi nascosto" id="kpi"></div>
+    <div class="kpi" id="kpi"></div>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
   </header>
@@ -236,7 +243,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
   <main>
     <div id="target" class="target nascosto"></div>
-    <div id="conversione" class="conv nascosto"></div>
+    <details id="conversione" class="conv nascosto"></details>
     <p class="conteggio" id="conteggio">Carico…</p>
     <div id="lista"></div>
     <div style="text-align:center;margin-top:14px">
@@ -538,18 +545,6 @@ $('#entra').onclick = async () => {
 $('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
 $('#email').addEventListener('keydown', e => { if(e.key==='Enter') $('#chiedi').click(); });
 
-/* I numeri della giornata stanno chiusi: servono per fare il punto, non a ogni
-   telefonata, e aperti si mangiavano la testata. La scelta resta fra una
-   sessione e l'altra — chi li vuole sempre sott'occhio non deve riaprirli ogni
-   volta. */
-const KPI_APERTI = 'fc_kpi_aperti';
-function mostraKpi(aperti){
-  $('#kpi').classList.toggle('nascosto', !aperti);
-  $('#apri-kpi').classList.toggle('aperto', aperti);
-  try{ localStorage.setItem(KPI_APERTI, aperti ? '1' : '0'); }catch(e){}
-}
-$('#apri-kpi').onclick = () => mostraKpi($('#kpi').classList.contains('nascosto'));
-try{ if(localStorage.getItem(KPI_APERTI) === '1') mostraKpi(true); }catch(e){}
 
 controllaVersione();
 setInterval(controllaVersione, 10 * 60 * 1000);
@@ -735,9 +730,11 @@ function disegnaConversione(dati, operatoreScelto){
      indovinare cosa si e' rotto. */
   if(dati.errore){
     box.classList.remove('nascosto');
-    box.innerHTML = `<h4>Conversione</h4>
-      <p class="quota" style="margin:0">Non sono riuscita a calcolarla. Motivo dal server:</p>
-      <p class="quota" style="margin:6px 0 0;color:#98292E;word-break:break-word">${esc(dati.errore)}</p>`;
+    box.innerHTML = `<summary>Conversione — non calcolata</summary>
+      <div class="dentro">
+        <p class="quota" style="margin:0">Motivo dal server:</p>
+        <p class="quota" style="margin:6px 0 0;color:#98292E;word-break:break-word">${esc(dati.errore)}</p>
+      </div>`;
     console.warn('conversione non calcolata:', dati.errore);
     return;
   }
@@ -765,7 +762,8 @@ function disegnaConversione(dati, operatoreScelto){
 
   box.classList.remove('nascosto');
   box.innerHTML = `
-    <h4>Conversione — una persona conta una volta, si guarda chi ha risposto</h4>
+    <summary>Conversione — una persona conta una volta, si guarda chi ha risposto</summary>
+    <div class="dentro">
     <table>
       <tr><th>Obiettivo</th><th>ultimi 15 giorni</th><th>ultimi 30 giorni</th></tr>
       <tr><td>Profilo completato</td>${cella(p15)}${cella(p30)}</tr>
@@ -775,7 +773,8 @@ function disegnaConversione(dati, operatoreScelto){
         <td><b>${m30.mute}</b> su ${m30.chiamate} <span class="quota">· ${quota(m30.mute, m30.chiamate)}</span></td></tr>
     </table>
     <p class="quota" style="margin:9px 0 0">Una conversione conta se arriva entro
-      ${dati.attribuzione_giorni || 30} giorni dalla prima telefonata a cui la persona ha risposto.</p>`;
+      ${dati.attribuzione_giorni || 30} giorni dalla prima telefonata a cui la persona ha risposto.</p>
+    </div>`;
 }
 
 /* Il popup una volta sola al giorno: la barra si ridisegna a ogni chiamata
@@ -933,6 +932,12 @@ async function apriScheda(id){
     <div class="corpo">
 
       <div class="recap">
+        ${profilatoDopoLaChiamata(c) ? `<div class="fatta">✓ <b>Si è profilato dopo la nostra chiamata</b>${
+           c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}.${
+           c.ultimo_esito === 'Promette Profilazione' ? ' Promessa mantenuta.' : ''}
+           <b>Il profilo non si chiede più.</b> Torna${c.profilato_il
+             ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5).toLocaleDateString('it-IT',{day:'numeric',month:'long'})
+             : ' fra sette giorni'} per il feedback sui primi match e la proposta per il Forum.</div>` : ''}
         ${tratti.length ? `<div class="tratti">${tratti.map(esc).join(' · ')}</div>` : ''}
         <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
              ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
@@ -943,12 +948,6 @@ async function apriScheda(id){
         <div style="margin-top:5px">${obiettivo==='profilazione'
            ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
            : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
-        ${profilatoDopoLaChiamata(c) ? `<div style="margin-top:5px" class="mantenuta">✓ <b>Si è profilato
-           dopo la tua chiamata</b>${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}.${
-           c.ultimo_esito === 'Promette Profilazione' ? ' Promessa mantenuta.' : ''}
-           Il profilo non si chiede più: torna${c.profilato_il ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5)
-             .toLocaleDateString('it-IT',{day:'numeric',month:'long'}) : ' fra sette giorni'} per il feedback
-           sui primi match e la proposta per il Forum.</div>` : ''}
         ${c.promessa_aperta ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
            <b>${esc(dataImpegno(c) || 'una data che non è stata segnata')}</b>${promessaScaduta(c)
              ? ' — <b>la data è passata</b> e il profilo non risulta ancora completato: è questo il motivo della chiamata.'
@@ -1058,13 +1057,25 @@ async function apriScheda(id){
 
       <div data-passi></div>
 
-      ${storico.length ? `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>
-        ${storico.map(s=>`<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
-          <b>${esc(s.esito||'—')}</b> · ${dataOra(s.iniziata_il)} · ${esc(s.operatore||'')}
-          ${durataChiamata(s.durata_secondi)
-            ? ` · <b>${durataChiamata(s.durata_secondi)}</b>`
-            : (s.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
-          ${s.note?`<div style="color:var(--tenue)">${esc(s.note)}</div>`:''}</div>`).join('')}`:''}
+      ${(() => {
+        /* Non solo le telefonate: anche quello che la persona ha fatto per conto
+           suo. Senza, uno storico di soli «Non risponde» racconta un fallimento
+           dove invece c'è stata una conversione. */
+        const eventi = storico.map(s => ({ quando: s.iniziata_il, chiamata: s }));
+        if(c.profilato_il) eventi.push({ quando: c.profilato_il, profilazione: true });
+        if(!eventi.length) return '';
+        eventi.sort((a,b) => new Date(b.quando) - new Date(a.quando));
+        return `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>`
+        + eventi.map(e => e.profilazione
+          ? `<div class="evento-prof">✓ Ha completato il profilo su MigaMATCH · ${dataOra(e.quando)}</div>`
+          : `<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
+              <b>${esc(e.chiamata.esito||'—')}</b> · ${dataOra(e.chiamata.iniziata_il)} · ${esc(e.chiamata.operatore||'')}
+              ${durataChiamata(e.chiamata.durata_secondi)
+                ? ` · <b>${durataChiamata(e.chiamata.durata_secondi)}</b>`
+                : (e.chiamata.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
+              ${e.chiamata.note?`<div style="color:var(--tenue)">${esc(e.chiamata.note)}</div>`:''}</div>`
+        ).join('');
+      })()}
     </div>
    </div>`;
   document.body.appendChild(velo);
