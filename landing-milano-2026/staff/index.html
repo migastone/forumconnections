@@ -98,6 +98,21 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
 /* ---------- CTA e campo da portare a casa ---------- */
 .tratti{font-size:1.02rem;font-weight:700;color:var(--navy);margin-bottom:6px}
+.passi{margin:14px 0 0;padding:12px 14px;border:1px solid #DCE2EF;border-radius:10px;background:#FAFBFE}
+.passi h4{margin:0 0 8px;font-size:.83rem;letter-spacing:.04em;text-transform:uppercase;color:var(--tenue)}
+.passi ol{margin:0;padding-left:20px}
+.passi li{margin-bottom:5px;line-height:1.35}
+.passi li b{color:var(--navy)}
+.passi li span{display:block;color:var(--tenue);font-size:.85rem}
+.passi li.ramo b{color:#8A6A17}
+.passi .apri{margin-top:10px}
+.testo-script{max-height:70vh;overflow:auto;padding-right:6px}
+.testo-script h3{margin:16px 0 8px;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:var(--tenue);border-bottom:1px solid #E4E8F2;padding-bottom:4px}
+.testo-script .say{margin:0 0 8px;padding:9px 12px;border-left:3px solid var(--gold);background:#FFFCF3;border-radius:0 6px 6px 0}
+.testo-script .nota{margin:0 0 8px;color:var(--tenue);font-size:.88rem}
+.testo-script .bul{margin:0 0 5px 16px;font-size:.9rem}
+.testo-script .obz{margin:0 0 10px}
+.testo-script .obz b{display:block;color:var(--navy)}
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
@@ -546,6 +561,9 @@ async function apriScheda(id){
         </div>
       </div>
 
+      <div class="passi" data-passi><h4>La chiamata, passo per passo</h4>
+        <div style="color:var(--tenue)">Carico lo script…</div></div>
+
       <div class="azioni">
         <button class="btn oro" data-avvia>Avvia chiamata</button>
         <span class="cronometro" data-crono>08:00</span>
@@ -597,6 +615,16 @@ async function apriScheda(id){
 
   const q = s => velo.querySelector(s);
   let chiamataId = null, partita = null;
+
+  /* Gli step arrivano dopo, senza far aspettare la scheda: quello che serve per
+     iniziare — chi e', cosa devi portare a casa — e' gia' a video. Se lo script
+     non si carica la chiamata si fa lo stesso, e il riquadro lo dice invece di
+     restare su «carico» per sempre. */
+  caricaScript(scriptPer(c))
+    .then(s => { if(q('[data-passi]')) disegnaPassi(q('[data-passi]'), s, c); })
+    .catch(e => { if(q('[data-passi]')) q('[data-passi]').innerHTML =
+      `<h4>La chiamata, passo per passo</h4><div class="nota-riga attenzione">Non sono riuscita a
+       caricare lo script (${esc(e.message)}). La traccia e' nel Word, la chiamata si fa lo stesso.</div>`; });
 
   const chiudi = () => { if(cronometro) clearInterval(cronometro); cronometro = null; velo.remove(); };
   q('[data-chiudi]').onclick = chiudi;
@@ -797,6 +825,99 @@ function prossimoGiornoLavorativo(da){
    l'onboarding su MigaMATCH: chi si profila passa da PROFILAZIONE a FORUM da
    solo, senza che nessuno tocchi niente. La fascia resta ferma a com'era ad
    agosto, quindi dedurre da lì darebbe la risposta sbagliata il giorno dopo.  */
+/* ═══════════════ gli script di chiamata ═══════════════
+   Il testo non vive in questa pagina: sta nella Edge Function, perche' questo
+   repo e' pubblico e la traccia di vendita non ha motivo di esserci dentro.
+   Qui si sceglie solo quale dei sei serve, e si mostra.
+
+   La scelta guarda prima l'obiettivo e poi la provenienza, in quest'ordine:
+   chi non e' profilato va allo script della profilazione qualunque sia la sua
+   storia, perche' in questa fase e' quello l'obiettivo. Gli altri si dividono
+   per quanto ci conoscono: chi e' stato a un Forum dal vivo e' il segnale piu'
+   forte e vince sugli altri.                                                 */
+const SCRIPT_PER_FONTE = [
+  [f => f.some(x => x.startsWith('forum_')), '03'],
+  [f => f.includes('speed_presente'),        '04'],
+  [f => f.includes('speed_iscritto'),        '05'],
+  [f => f.includes('bigbang_profilato'),     '02']
+];
+
+function scriptPer(c){
+  if(c.acquirente) return '06';
+  if(obiettivoPer(c) === 'profilazione') return '01';
+  const fonti = (c.fonti || []).map(String);
+  for(const [prova, numero] of SCRIPT_PER_FONTE) if(prova(fonti)) return numero;
+  return '02';
+}
+
+/* Gli script si scaricano una volta sola per sessione: sono gli stessi per
+   tutti i contatti della stessa fascia e non cambiano durante il turno. */
+const SCRIPT_IN_CACHE = {};
+async function caricaScript(numero){
+  if(!SCRIPT_IN_CACHE[numero]) SCRIPT_IN_CACHE[numero] = (await api('/script/' + numero)).script;
+  return SCRIPT_IN_CACHE[numero];
+}
+
+/* I segnaposto riempiti con quello che sappiamo di questa persona: l'operatrice
+   non deve tradurre niente mentre ha qualcuno al telefono. Quello che non
+   sappiamo resta fra parentesi quadre, visibile, invece di sparire. */
+function personalizza(testo, c){
+  return String(testo)
+    .replace(/\{BRAND\}/g, marchioPer(c))
+    .replace(/\[NOME\]/g, (c.nome || '').trim() || '[NOME]')
+    .replace(/\[OPERATRICE\]/g, (io && io.nome ? io.nome : '').trim() || '[OPERATRICE]')
+    .replace(/\[DATA\]/g, dataImpegno(c) || '[DATA]')
+    .replace(/\[EDIZIONE\]/g, edizioneForum(c) || '[EDIZIONE]');
+}
+
+/* Le sezioni che cominciano con «Se » sono rami, non passi: si percorrono solo
+   quando succede qualcosa. Distinguerle evita che sembri una scaletta di
+   quindici cose da dire. */
+const eRamo = titolo => /^(se |cosa non si fa|prima di comporre)/i.test(titolo.trim());
+
+function disegnaPassi(dove, s, c){
+  const passi = s.sezioni.map(sez => {
+    const battuta = (sez.b || []).find(r => r[0] === 'say');
+    const primo = battuta ? personalizza(battuta[1], c) : '';
+    return { titolo: sez.h, battuta: primo, ramo: eRamo(sez.h) };
+  });
+  dove.innerHTML = `<h4>La chiamata, passo per passo — script ${esc(s.numero)} · ${esc(s.titolo)}</h4>
+    <ol>${passi.map(p => `<li class="${p.ramo?'ramo':''}"><b>${esc(p.titolo)}</b>${
+      p.battuta ? `<span>“${esc(p.battuta.length > 120 ? p.battuta.slice(0,120) + '…' : p.battuta)}”</span>` : ''
+    }</li>`).join('')}</ol>
+    <button class="btn apri" data-apri-script>Apri lo script completo</button>`;
+  dove.querySelector('[data-apri-script]').onclick = () => mostraScript(s, c);
+}
+
+/* Lo script per intero, con i segnaposto gia' riempiti. */
+function mostraScript(s, c){
+  const velo = document.createElement('div');
+  velo.className = 'velo';
+  const riga = r => r[0] === 'say' ? `<p class="say">${esc(personalizza(r[1], c))}</p>`
+              : r[0] === 'bul' ? `<p class="bul">• ${esc(personalizza(r[1], c))}</p>`
+              : `<p class="nota">▸ ${esc(personalizza(r[1], c))}</p>`;
+  velo.innerHTML = `
+   <div class="scheda">
+    <header>
+      <span class="marchio">Script ${esc(s.numero)} · ${esc(s.titolo)}</span>
+      <span class="chi">${esc(s.brand)}</span>
+      <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
+    </header>
+    <div class="corpo">
+      <div class="recap"><b>Obiettivo</b> — ${esc(s.obiettivo)}</div>
+      <div class="testo-script">
+        ${s.sezioni.map(sez => `<h3>${esc(sez.h)}</h3>${(sez.b||[]).map(riga).join('')}`).join('')}
+        ${(s.obiezioni||[]).length ? `<h3>Se ti dice…</h3>${s.obiezioni.map(o =>
+          `<div class="obz"><b>${esc(o[0])}</b><p class="say">${esc(personalizza(o[1], c))}</p></div>`).join('')}` : ''}
+      </div>
+    </div>
+   </div>`;
+  document.body.appendChild(velo);
+  const chiudi = () => velo.remove();
+  velo.querySelector('[data-chiudi]').onclick = chiudi;
+  velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
+}
+
 function obiettivoPer(c){
   const cta = c.cta || (c.profilato_ora ?? c.profilato ? 'FORUM' : 'PROFILAZIONE');
   return cta === 'FORUM' ? 'forum' : 'profilazione';
