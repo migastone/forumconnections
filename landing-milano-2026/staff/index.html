@@ -213,6 +213,22 @@ const $ = s => document.querySelector(s);
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dataOra = v => v ? new Date(v).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
 
+/* Copia negli appunti. Il metodo moderno vuole un contesto sicuro: la pagina sta
+   su https, ma se per qualche motivo non lo fosse resta il ripiego con textarea,
+   altrimenti l'operatrice si ritroverebbe con gli appunti vuoti e nessun segnale. */
+function copiaNegliAppunti(testo){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(testo).catch(() => copiaAllaVecchia(testo));
+  }else{ copiaAllaVecchia(testo); }
+}
+function copiaAllaVecchia(testo){
+  const a = document.createElement('textarea');
+  a.value = testo; a.setAttribute('readonly',''); a.style.position='fixed'; a.style.top='-1000px';
+  document.body.appendChild(a); a.select();
+  try{ document.execCommand('copy'); }catch(e){ /* niente da fare, resta il testo a video */ }
+  a.remove();
+}
+
 function avviso(dove, testo, tipo='err'){
   $(dove).innerHTML = testo ? `<p class="avviso ${tipo}">${esc(testo)}</p>` : '';
 }
@@ -525,7 +541,8 @@ async function apriScheda(id){
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
-        <button class="btn ${c.promesso_non_pagato?'oro':''}" data-email ${c.email?'':'disabled'}>${c.promesso_non_pagato?'Email · riassunto e offerta':'Email'}</button>
+        <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
+          c.acquirente ? 'Email · benvenuto' : (c.promesso_non_pagato?'Email · riassunto e offerta':'Email')}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
       </div>
 
@@ -791,6 +808,7 @@ function dataImpegno(c){
    del markdown il contatto vedrebbe scritti gli asterischi.                  */
 
 const LINK_PROFILO = 'https://mssl.it/profilati';
+const LINK_GUIDA = 'https://docs.google.com/document/d/1erdnRT8OzoSCti2uJyqt2vQOttWA45EYfUW_04bJle0/edit';
 const PACCHETTI = {
   base:    { sku:'MM_FORUM_MI_20261017',         etichetta:'Biglietto base' },
   azienda: { sku:'MM_FORUM_MI_20261017_AZIENDA', etichetta:'Pacchetto azienda', prezzo:'599 €' }
@@ -838,7 +856,9 @@ function varianteSecondoBuco(c){
 const BRAND_VARIANTE = {
   quattro_a: 'MigaMATCH',
   quattro_b: 'Segnalazione Vincente',
-  quattro_c: 'Segnalazione Vincente'
+  quattro_c: 'Segnalazione Vincente',
+  /* a chi ha gia' comprato ci si presenta con il nome dell'evento */
+  benvenuto_acquisto: 'Forum Connections'
 };
 
 const TESTI = {
@@ -908,7 +928,29 @@ Come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${
 
 Il tuo link personale, prezzo di oggi ${p.prezzo}: ${p.link}
 
-P.S. Ti ho tenuto da parte uno dei tre mesi di MigaMATCH completo in regalo — *ne abbiamo solo 50 in tutto* e li gestiamo a mano. Il tuo lo blocco fino al ${p.data}.`
+P.S. Ti ho tenuto da parte uno dei tre mesi di MigaMATCH completo in regalo — *ne abbiamo solo 50 in tutto* e li gestiamo a mano. Il tuo lo blocco fino al ${p.data}.`,
+
+  /* Parte dopo la chiamata di cortesia a chi ha gia' pagato (script 06).
+     Non contiene offerte ne' prezzi: chi lo riceve ha gia' comprato, e
+     rivendergli qualcosa adesso e' il modo piu' rapido per fargli pensare
+     di aver pagato troppo poco o troppo. */
+  benvenuto_acquisto: p =>
+`Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Benvenuto: il tuo posto per il *17 ottobre* c'è.
+
+Come ti dicevo al telefono, qui trovi le istruzioni passo passo — come prepararti, cosa fare prima e come funziona la giornata:
+${p.linkGuida}
+
+Le tre cose da fare, in ordine di importanza:
+1. *Completa o rivedi il profilo su MigaMATCH.* È quello che decide chi ti siede accanto nei sei round. ${p.linkProfilo}
+2. *Entra nel canale Telegram* dei partecipanti: le presentazioni cominciano lì, settimane prima. Il link te lo giro io — se non ti arriva, scrivimi.
+3. *Fatti due micro-lezioni dell'Academy* dentro l'app: cinque minuti l'una, e arrivi sapendo cosa dire nei sessanta secondi del primo round.
+
+*Dove e quando*: sabato 17 ottobre, dalle 9.00 (registrazione) alle 19.30.
+UNA Hotels Expo Fiera Milano, Via Giovanni Keplero 12, Pero (MI). Metro e parcheggio in loco. Pranzo incluso.
+
+E il regalo di cui ti parlavo: la copia di Economy di agosto, a pagina 22 ci siamo noi. https://mssl.it/economy
+
+Per qualsiasi cosa scrivi qui, ti rispondo io.`
 };
 
 const OGGETTI = {
@@ -918,7 +960,8 @@ const OGGETTI = {
   quattro_c: n => `${n}, il 17 ottobre a Milano, dal vivo`,
   email_promesso: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
   bene_profilazione: n => `${n}, il riassunto di quello che ci siamo detti`,
-  bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`
+  bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
+  benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
 
 /* Sceglie da sola il messaggio giusto guardando come è finita l'ultima chiamata
@@ -941,9 +984,12 @@ function componiMessaggio(c, operatore, opzioni){
   const esito = c.ultimo_esito || 'Da Contattare';
 
   let quale, tentativo = 0, tipo;
+  /* chi ha gia' pagato viene prima di tutto: a lui non si vende piu' niente,
+     gli si dice benvenuto e cosa fare adesso. */
+  if(c.acquirente){ quale = 'benvenuto_acquisto'; tipo = 'benvenuto'; }
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
      lungo, quello che mette per iscritto evento, offerta e scadenza. */
-  if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
+  else if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
   else if(esito === 'Richiamata'){  quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
@@ -961,7 +1007,8 @@ function componiMessaggio(c, operatore, opzioni){
 
   const p = { nome, op, edizione,
               brand: BRAND_VARIANTE[quale] ?? brand,
-              data, prezzo, link: linkAcquisto(pacchetto), linkProfilo: LINK_PROFILO };
+              data, prezzo, link: linkAcquisto(pacchetto),
+              linkProfilo: LINK_PROFILO, linkGuida: LINK_GUIDA };
   const testo = TESTI[quale](p);
   const TITOLI = {
     primo: 'primo tentativo a vuoto',
@@ -970,7 +1017,8 @@ function componiMessaggio(c, operatore, opzioni){
     quattro_c: 'secondo tentativo a vuoto · viene dagli Speed',
     bene_profilazione: 'recap dopo la chiamata · profilazione',
     bene_forum: 'recap dopo la chiamata · Forum',
-    email_promesso: 'ha detto di venire e non ha ancora comprato'
+    email_promesso: 'ha detto di venire e non ha ancora comprato',
+    benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
   };
 
   return {
@@ -1000,15 +1048,17 @@ function perchePuoMancare(m){
 
 /* Etichetta del pulsante: dice quale messaggio sta per uscire. */
 function etichettaMessaggio(m){
+  if(m.quale === 'benvenuto_acquisto') return 'WhatsApp · benvenuto';
   if(m.quale.startsWith('bene_')) return 'WhatsApp · recap';
   return 'WhatsApp n.' + m.tentativo;
 }
 
-/* L'invio resta manuale (wa.me / mailto), ma resta anche scritto: senza questo
-   nessuno saprebbe più chi ha ricevuto cosa.                                 */
-/* `aMano` distingue l'invio partito da wa.me o dal client di posta da quello
-   passato per la linea Migasender: nei conteggi devono esserci entrambi, ma
-   solo il secondo consuma il tetto del provider. Se il messaggio esisteva già
+/* Anche quello che parte fuori dal sistema resta scritto: senza, nessuno
+   saprebbe più chi ha ricevuto cosa.                                         */
+/* `aMano` distingue l'invio partito da wa.me — o dal testo copiato e spedito
+   dalla propria posta — da quello passato per la linea Migasender: nei
+   conteggi devono esserci entrambi, ma solo il secondo consuma il tetto del
+   provider. Se il messaggio esisteva già
    — è un promemoria che aspettava una mano — si aggiorna quella riga invece di
    crearne una seconda.                                                       */
 async function registraMessaggio(c, m, canale, chiamataId, testo, aMano, messaggioId){
@@ -1076,11 +1126,17 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
       <div data-motivo></div>
 
       <div class="azioni">
-        <button class="btn oro" data-invia>Invia dalla linea ${io?.linea_migasender ? io.linea_migasender : 'Migasender'}</button>
-        <button class="btn" data-mano>${canale === 'email' ? 'Apri nel programma di posta' : 'Invia a mano con WhatsApp Web'}</button>
+        <button class="btn oro" data-invia>${canale === 'email'
+          ? ('Invia da ' + (io?.email_mittente || 'il tuo indirizzo'))
+          : ('Invia dalla linea ' + (io?.linea_migasender ? io.linea_migasender : 'Migasender'))}</button>
+        <button class="btn" data-mano>${canale === 'email' ? 'Copia il testo e segnalo inviato a mano' : 'Invia a mano con WhatsApp Web'}</button>
       </div>
 
-      ${canale === 'email' ? '' : `<p class="nota-riga">Mandandolo a mano parte dal tuo numero personale, non dalla
+      ${canale === 'email'
+        ? `<p class="nota-riga">Parte da <b>${esc(io?.email_mittente || '—')}</b>, che gira sulla tua casella:
+           se ti rispondono, la risposta arriva a te. Qui non ci sono tetti da rispettare, quelli valgono
+           solo per WhatsApp.</p>`
+        : `<p class="nota-riga">Mandandolo a mano parte dal tuo numero personale, non dalla
         linea Migasender: il contatto se lo vede arrivare da un numero diverso da quello che userebbe per
         risponderti, e la conversazione si divide su due numeri.</p>`}
       <div data-esito-invio></div>
@@ -1109,9 +1165,10 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
           ? `<p class="nota-riga attenzione">${esc(capacitaOra.motivo || 'Le linee non sono disponibili.')}
              Si manda a mano.</p>`
           : '');
-    const autoOk = !manca && (canale === 'email' ? false : (capacitaOra ? capacitaOra.invio_automatico : true));
+    /* L'email non ha tetti da rispettare: quelli sono un limite delle linee
+       Migasender, non di SendGrid. Se il testo e' completo, si manda e basta. */
+    const autoOk = !manca && (canale === 'email' ? true : (capacitaOra ? capacitaOra.invio_automatico : true));
     q('[data-invia]').disabled = !autoOk;
-    q('[data-invia]').style.display = canale === 'email' ? 'none' : '';
     q('[data-mano]').disabled = manca;
   }
   ridisegna();
@@ -1130,19 +1187,30 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
     q('[data-invia]').disabled = true;
     avviso('[data-esito-invio]', 'Invio in corso…', 'ok');
     try{
-      const r = await api('/invia', { method:'POST', body: JSON.stringify({
-        contatto_id: c.id, tipo: corrente.tipo, testo, chiamata_id: chiamataId ?? null })});
+      const invio = { contatto_id: c.id, tipo: corrente.tipo, canale, testo,
+                      chiamata_id: chiamataId ?? null };
+      if(canale === 'email'){
+        invio.oggetto = (q('[data-oggetto]') ? q('[data-oggetto]').value : corrente.oggetto).trim();
+        if(!invio.oggetto){ q('[data-invia]').disabled = false;
+          return avviso('[data-esito-invio]', 'Manca l\u2019oggetto: senza, la mail parte come "(nessun oggetto)".'); }
+      }
+      const r = await api('/invia', { method:'POST', body: JSON.stringify(invio) });
       if(r.inviato){
-        avviso('[data-esito-invio]', 'Inviato dalla linea Migasender.' + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
+        avviso('[data-esito-invio]', (canale === 'email'
+          ? 'Email inviata da ' + (io?.email_mittente || 'il tuo indirizzo') + '.'
+          : 'Inviato dalla linea Migasender.') + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
         if(dopo) dopo();
         setTimeout(chiudi, 1200);
       }else{
-        avviso('[data-esito-invio]',
-          (r.motivo || 'Invio automatico non riuscito.') + ' Mandalo a mano qui sotto.');
+        avviso('[data-esito-invio]', (r.motivo || 'Invio non riuscito.') + ' ' + (canale === 'email'
+          ? 'Copia il testo qui sotto e mandalo dalla tua posta.'
+          : 'Mandalo a mano qui sotto.'));
         q('[data-invia]').disabled = true;
       }
     }catch(e){
-      avviso('[data-esito-invio]', e.message + ' Mandalo a mano qui sotto.');
+      avviso('[data-esito-invio]', e.message + ' ' + (canale === 'email'
+        ? 'Copia il testo qui sotto e mandalo dalla tua posta.'
+        : 'Mandalo a mano qui sotto.'));
       q('[data-invia]').disabled = true;
     }
   };
@@ -1154,15 +1222,16 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
     if(canale === 'email'){
       const oggetto = q('[data-oggetto]') ? q('[data-oggetto]').value : corrente.oggetto;
       if(!c.email) return avviso('[data-esito-invio]', 'Questo contatto non ha un indirizzo email.');
-      window.location.href = `mailto:${encodeURIComponent(c.email)}`
-        + `?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(testo)}`;
+      copiaNegliAppunti(`A: ${c.email}\nOggetto: ${oggetto}\n\n${testo}`);
     }else{
       const n = (c.telefono || '').replace(/\D/g,'');
       if(!n) return avviso('[data-esito-invio]', 'Questo contatto non ha un numero di telefono.');
       window.open(`https://wa.me/${n}?text=${encodeURIComponent(testo)}`, '_blank', 'noopener');
     }
     registraMessaggio(c, corrente, canale, chiamataId, testo, true, opzioni.messaggioId);
-    avviso('[data-esito-invio]', 'Segnato come inviato a mano.', 'ok');
+    avviso('[data-esito-invio]', canale === 'email'
+      ? 'Testo copiato negli appunti e segnato come inviato a mano.'
+      : 'Segnato come inviato a mano.', 'ok');
     if(dopo) dopo();
   };
 }
