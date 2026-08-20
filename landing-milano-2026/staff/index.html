@@ -98,8 +98,15 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
 /* ---------- CTA e campo da portare a casa ---------- */
 .tratti{font-size:1.02rem;font-weight:700;color:var(--navy);margin-bottom:6px}
-.passi{margin:14px 0 0;padding:12px 14px;border:1px solid #DCE2EF;border-radius:10px;background:#FAFBFE}
-.passi h4{margin:0 0 8px;font-size:.83rem;letter-spacing:.04em;text-transform:uppercase;color:var(--tenue)}
+.passi{margin:14px 0 0;border:1px solid #DCE2EF;border-radius:10px;background:#FAFBFE}
+.passi>summary{cursor:pointer;padding:11px 14px;font-size:.83rem;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--tenue);font-weight:700;list-style:none}
+.passi>summary::-webkit-details-marker{display:none}
+.passi>summary::marker{content:''}
+.passi>summary::before{content:'▸';display:inline-block;width:14px;transition:transform .15s}
+.passi[open]>summary::before{transform:rotate(90deg)}
+.passi>summary:hover{color:var(--navy)}
+.passi .dentro{padding:0 14px 12px}
 .passi ol{margin:0;padding-left:20px}
 .passi li{margin-bottom:5px;line-height:1.35}
 .passi li b{color:var(--navy)}
@@ -571,9 +578,6 @@ async function apriScheda(id){
         </div>
       </div>
 
-      <div class="passi" data-passi><h4>La chiamata, passo per passo</h4>
-        <div style="color:var(--tenue)">Carico lo script…</div></div>
-
       <div class="azioni">
         <button class="btn oro" data-avvia>Avvia chiamata</button>
         <span class="cronometro" data-crono>08:00</span>
@@ -614,6 +618,8 @@ async function apriScheda(id){
         <div data-avviso-scheda></div>
       </div>
 
+      <div data-passi></div>
+
       ${storico.length ? `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>
         ${storico.map(s=>`<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
           <b>${esc(s.esito||'—')}</b> · ${dataOra(s.iniziata_il)} · ${esc(s.operatore||'')}
@@ -633,8 +639,9 @@ async function apriScheda(id){
   caricaScript(scriptPer(c))
     .then(s => { if(q('[data-passi]')) disegnaPassi(q('[data-passi]'), s, c); })
     .catch(e => { if(q('[data-passi]')) q('[data-passi]').innerHTML =
-      `<h4>La chiamata, passo per passo</h4><div class="nota-riga attenzione">Non sono riuscita a
-       caricare lo script (${esc(e.message)}). La traccia e' nel Word, la chiamata si fa lo stesso.</div>`; });
+      `<details class="passi"><summary>La chiamata, passo per passo — non caricata</summary>
+        <div class="dentro"><p class="nota-riga attenzione">Non sono riuscita a caricare lo script
+        (${esc(e.message)}). La traccia è nel Word, la chiamata si fa lo stesso.</p></div></details>`; });
 
   const chiudi = () => { if(cronometro) clearInterval(cronometro); cronometro = null; velo.remove(); };
   q('[data-chiudi]').onclick = chiudi;
@@ -906,11 +913,17 @@ function disegnaPassi(dove, s, c){
     const primo = battuta ? personalizza(battuta[1], c) : '';
     return { titolo: sez.h, battuta: primo, ramo: eRamo(sez.h) };
   });
-  dove.innerHTML = `<h4>La chiamata, passo per passo — script ${esc(s.numero)} · ${esc(s.titolo)}</h4>
-    <ol>${passi.map(p => `<li class="${p.ramo?'ramo':''}"><b>${esc(p.titolo)}</b>${
-      p.battuta ? `<span>“${esc(p.battuta.length > 120 ? p.battuta.slice(0,120) + '…' : p.battuta)}”</span>` : ''
-    }</li>`).join('')}</ol>
-    <button class="btn apri" data-apri-script>Apri lo script completo</button>`;
+  /* Chiuso di suo: chi ha fatto trenta chiamate la traccia ce l'ha in testa e
+     non vuole scorrerla ogni volta per arrivare ai pulsanti. Si apre al clic. */
+  dove.innerHTML = `<details class="passi">
+    <summary>La chiamata, passo per passo — script ${esc(s.numero)} · ${esc(s.titolo)}</summary>
+    <div class="dentro">
+      <ol>${passi.map(p => `<li class="${p.ramo?'ramo':''}"><b>${esc(p.titolo)}</b>${
+        p.battuta ? `<span>“${esc(p.battuta.length > 120 ? p.battuta.slice(0,120) + '…' : p.battuta)}”</span>` : ''
+      }</li>`).join('')}</ol>
+      <button class="btn apri" data-apri-script>Apri lo script completo</button>
+    </div>
+  </details>`;
   dove.querySelector('[data-apri-script]').onclick = () => mostraScript(s, c);
 }
 
