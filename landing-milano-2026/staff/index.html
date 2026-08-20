@@ -573,7 +573,7 @@ $('#lista').addEventListener('click', e => {
 $('#altri').onclick = () => { pagina++; caricaCoda(false); };
 $('#ricarica').onclick = () => caricaCoda(true);
 $('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange =
-  $('#f-operatore').onchange = () => caricaCoda(true);
+  $('#f-operatore').onchange = () => { caricaCoda(true); disegnaKpi(); };
 let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTimeout(()=>caricaCoda(true), 300); };
 
 /* ═══════════════ KPI ═══════════════ */
@@ -585,17 +585,18 @@ let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTime
    Il target arriva dalle impostazioni, quindi si cambia senza un deploy. */
 let targetGiornaliero = 48;
 
-function disegnaTarget(fatte){
+function disegnaTarget(fatte, meta, mia){
   const box = $('#target');
   if(!io){ box.classList.add('nascosto'); return; }
   box.classList.remove('nascosto');
-  const quota = Math.max(0, Math.min(1, fatte / targetGiornaliero));
+  const quota = Math.max(0, Math.min(1, fatte / meta));
   const pct = Math.round(quota * 100);
-  const mancano = Math.max(0, targetGiornaliero - fatte);
-  box.classList.toggle('fatto-tutto', fatte >= targetGiornaliero);
+  const mancano = Math.max(0, meta - fatte);
+  box.classList.toggle('fatto-tutto', fatte >= meta);
   box.innerHTML = `
     <div class="riga">
-      <span><b>${fatte}</b> di ${targetGiornaliero} chiamate gestite oggi</span>
+      <span>${mia.etichetta ? `<span style="color:var(--tenue)">${esc(mia.etichetta)} · </span>` : ''}
+        <b>${fatte}</b> di ${meta} chiamate gestite oggi</span>
       <span>${mancano ? `ne mancano ${mancano}` : 'obiettivo raggiunto'}</span>
     </div>
     <div class="pista">
@@ -603,13 +604,15 @@ function disegnaTarget(fatte){
       <div class="coniglio" style="left:${pct}%">🐰</div>
       <div class="arrivo">🥕</div>
     </div>`;
-  festeggiaSeFinito(fatte);
+  /* I complimenti solo per la propria corsa: festeggiare il traguardo di
+     un'altra persona mentre si guarda la sua coda non ha senso. */
+  if(mia.eMia) festeggiaSeFinito(fatte, meta);
 }
 
 /* Il popup una volta sola al giorno: la barra si ridisegna a ogni chiamata
    registrata, e senza questo controllo la festa ripartirebbe ogni volta. */
-function festeggiaSeFinito(fatte){
-  if(fatte < targetGiornaliero) return;
+function festeggiaSeFinito(fatte, meta){
+  if(fatte < meta) return;
   const chiave = 'fc_target_' + (io ? io.operatore_id : '') + '_' + new Date().toISOString().slice(0,10);
   try{ if(localStorage.getItem(chiave)) return; localStorage.setItem(chiave, '1'); }catch(e){}
 
@@ -621,7 +624,7 @@ function festeggiaSeFinito(fatte){
       <div style="font-size:3.4rem;line-height:1;margin-bottom:6px">🐰🥕</div>
       <h2 style="margin:0 0 10px;font-size:1.5rem;color:var(--navy)">Complimenti! Anche oggi ce l'hai fatta</h2>
       <p style="margin:0 0 20px;color:var(--tenue)">
-        ${fatte} chiamate gestite. Il traguardo era ${targetGiornaliero}.</p>
+        ${fatte} chiamate gestite. Il traguardo era ${meta}.</p>
       <button class="btn oro" style="width:auto;padding:11px 26px" data-chiudi-festa>Grazie, continuo</button>
     </div>
    </div>`;
@@ -631,17 +634,50 @@ function festeggiaSeFinito(fatte){
   velo.addEventListener('click', e => { if(e.target === velo) via(); });
 }
 
+let kpiUltimi = null;
+
 async function caricaKpi(){
   try{
-    const d = await api('/kpi');
+    kpiUltimi = await api('/kpi');
+    disegnaKpi();
+  }catch(e){ $('#kpi').innerHTML = `<div class="chi">KPI non disponibili</div>`; }
+}
+
+/* Testata e barra guardano la stessa cosa che guarda la lista: se stai vedendo
+   la coda di Marica, i numeri sopra sono i suoi. Prima erano sempre il totale
+   di tutti, e con il filtro su una persona sola dicevano due cose diverse
+   nella stessa schermata. */
+function disegnaKpi(){
+  const d = kpiUltimi;
+  if(!d) return;
+  try{
     const oggi = (d.operatore || []).filter(x => (x.giorno || '').slice(0,10) === new Date().toISOString().slice(0,10));
     if(Number(d.target_giornaliero) > 0) targetGiornaliero = Number(d.target_giornaliero);
-    /* La barra guarda solo le mie: la somma di due operatrici non è il lavoro
-       di nessuno dei due. */
-    const mie = oggi.filter(x => !io || x.operatore_id === io.operatore_id);
-    disegnaTarget(mie.reduce((t,x) => t + Number(x.chiamate || 0), 0));
 
-    const somma = c => oggi.reduce((t,x) => t + Number(x[c] || 0), 0);
+    /* Al primo caricamento il menu può non essere ancora popolato: in quel caso
+       si guardano i propri numeri, non quelli di tutti. */
+    const sel = $('#f-operatore');
+    const scelto = (sel && sel.value) ? sel.value : (io ? io.operatore_id : 'tutti');
+    const righe = scelto === 'tutti' ? oggi : oggi.filter(x => x.operatore_id === scelto);
+
+    /* Con «tutti» il traguardo è quello della squadra: il target di uno solo
+       confrontato con la somma di tutti sarebbe un numero senza significato. */
+    const quantiOperatori = Math.max(1,
+      ((io && io.operatori) || []).filter(o => o.ruolo === 'operatore').length);
+    const meta = scelto === 'tutti' ? targetGiornaliero * quantiOperatori : targetGiornaliero;
+    const nome = scelto === 'tutti' ? 'la squadra'
+      : (((io && io.operatori) || []).find(o => o.id === scelto) || {}).nome;
+    const eMia = !!(io && scelto === io.operatore_id);
+    /* Un operatore riceve dall'API soltanto i propri numeri: se sta guardando la
+       coda di un'altra persona, qui arriverebbero zeri. Mostrare «Marica · 0 di
+       48» quando Marica ne ha fatte venti è peggio che non mostrare niente. */
+    const posso = eMia || (io && io.ruolo === 'admin');
+    if(!posso){ $('#target').classList.add('nascosto'); }
+    else disegnaTarget(righe.reduce((t,x) => t + Number(x.chiamate || 0), 0), meta, {
+      eMia, etichetta: eMia ? '' : (nome || '')
+    });
+
+    const somma = c => righe.reduce((t,x) => t + Number(x[c] || 0), 0);
     /* La vista la chiama contatti_chiusi: leggendo «chiuse» il riquadro ha
        sempre mostrato zero, anche dopo una chiusura vera. */
     const fatte = somma('chiamate'), connesse = somma('connesse'), chiuse = somma('contatti_chiusi');
