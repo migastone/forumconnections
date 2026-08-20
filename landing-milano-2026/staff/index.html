@@ -804,6 +804,7 @@ async function apriScheda(id){
             ${obiettivo==='profilazione'?'<div class="serve">È questa che devi portare a casa</div>':''}
           </div>
         </div>
+        <div class="azioni" data-messaggi style="margin:0 0 14px"></div>
         <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 12px">
           <input type="checkbox" data-risposto checked style="width:17px;height:17px;margin:0">
           <span>Ha risposto al telefono</span>
@@ -880,9 +881,13 @@ async function apriScheda(id){
   /* Apre la gestione. Non scrive niente: chi apre per cambiare l'operatrice
      assegnata o correggere una nota non ha fatto nessuna chiamata. */
   q('[data-gestisci]').onclick = () => {
+    /* La riga di sopra sparisce: da qui in poi si lavora dentro il modulo, e
+       avere gli stessi pulsanti in due posti con due significati diversi era la
+       cosa piu' confusa della scheda. */
+    q('.azioni').style.display = 'none';
     q('[data-form]').classList.remove('nascosto');
-    q('[data-gestisci]').disabled = true;
     q('[data-esito]').focus();
+    aggiornaEtichetteMessaggi();
   };
 
   /* avvio: registra l'inizio e fa partire il conto alla rovescia degli 8 minuti.
@@ -1105,9 +1110,34 @@ async function apriScheda(id){
   };
   const messaggioPer = canale => componiMessaggio(c, undefined, { canale, esito: esitoScelto() });
 
+  /* Gli stati per cui non c'e' niente da mandare: a chi ha chiesto di essere
+     cancellato non si scrive piu', e finche' non si e' scelto un esito non si
+     sa nemmeno cosa proporre. */
+  const SENZA_MESSAGGIO = new Set(['', 'Da Contattare', 'Richiede disiscrizione']);
+
   const aggiornaEtichetteMessaggi = () => {
+    /* La riga in alto resta allineata finche' e' visibile. */
     q('[data-wa]').textContent    = etichettaMessaggio(messaggioPer('whatsapp'));
     q('[data-email]').textContent = etichettaEmail(messaggioPer('email'));
+
+    const dentro = q('[data-messaggi]');
+    if(!dentro) return;
+    const scelto = q('[data-esito]') ? q('[data-esito]').value : '';
+    if(SENZA_MESSAGGIO.has(scelto)){
+      dentro.innerHTML = scelto === 'Richiede disiscrizione'
+        ? `<p class="nota-riga" style="margin:0">Ha chiesto di essere cancellato: non gli si manda più niente,
+           nemmeno il regalo.</p>`
+        : `<p class="nota-riga" style="margin:0">Scegli l'esito qui sopra e qui comparirà il messaggio da mandare.</p>`;
+      return;
+    }
+    const wa = messaggioPer('whatsapp'), em = messaggioPer('email');
+    dentro.innerHTML = `
+      <button type="button" class="btn verde" data-wa-giu ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(wa))}</button>
+      <button type="button" class="btn" data-email-giu ${c.email?'':'disabled'}>${esc(etichettaEmail(em))}</button>`;
+    dentro.querySelector('[data-wa-giu]').onclick = () =>
+      apriComposizione(c, 'whatsapp', chiamataId, null, { messaggio: messaggioPer('whatsapp') });
+    dentro.querySelector('[data-email-giu]').onclick = () =>
+      apriComposizione(c, 'email', chiamataId, null, { messaggio: messaggioPer('email') });
   };
 
   q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId, null,
@@ -1460,6 +1490,15 @@ Intanto ti lascio qui Economy, il numero di agosto, così ce l'hai a portata di 
 
 Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.`,
 
+  /* Ha detto di no. Economy gliela si manda comunque — e' un regalo e non
+     chiede niente in cambio — ma senza nessun aggancio: proporre ancora
+     qualcosa a chi ha appena declinato e' il modo piu' rapido per farsi
+     ricordare male. */
+  solo_economy: p =>
+`Ciao ${p.nome}, come promesso al telefono ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pagina 22 ci trovi noi.
+
+Nessun impegno e nessun seguito. Se un domani ti serve, sai dove trovarmi — buon lavoro!`,
+
   benvenuto_acquisto: p =>
 `Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Benvenuto: il tuo posto per il *17 ottobre* c'è.
 
@@ -1488,6 +1527,7 @@ const OGGETTI = {
   bene_profilazione: n => `${n}, il riassunto di quello che ci siamo detti`,
   bene_forum: n => `${n}, il riassunto di quello che ci siamo detti — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
+  solo_economy: n => `${n}, la copia di Economy come promesso`,
   benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
 
@@ -1533,6 +1573,7 @@ function componiMessaggio(c, operatore, opzioni){
                                     quale = 'appuntamento';           tipo = 'economy'; }
   else if(esito === 'Da Ricontattare'){
                                     quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
+  else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
 
@@ -1561,6 +1602,7 @@ function componiMessaggio(c, operatore, opzioni){
     bene_profilazione: 'recap dopo la chiamata · profilazione',
     bene_forum: 'recap dopo la chiamata · Forum',
     appuntamento: 'chiamata a metà · appuntamento preso',
+    solo_economy: 'ha detto di no · Economy lo stesso',
     email_promesso: 'ha detto di venire e non ha ancora comprato',
     benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
   };
@@ -1599,6 +1641,7 @@ const COSA_PARTE = {
   bene_profilazione:  'recap e link del profilo',
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
+  solo_economy:       'solo Economy',
   email_promesso:     'riassunto e offerta'
 };
 
