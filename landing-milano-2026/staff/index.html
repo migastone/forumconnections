@@ -379,6 +379,18 @@ const dataOra = v => v ? new Date(v).toLocaleString('it-IT',{day:'2-digit',month
    diventavano «1 min» e «0 min», e la seconda spariva del tutto.
    Torna null quando il cronometro non è mai partito — che è un'altra cosa da
    una chiamata durata zero, e va detta con parole diverse. */
+/* La data di profilazione e' una colonna `date` nel database, ma arriva dalla
+   Edge Function come istante completo — «2026-08-20T00:00:00.000Z» — perche' il
+   driver la trasforma in una data JavaScript prima di serializzarla in JSON.
+   Attaccarci un orario in coda produceva «2026-08-20T00:00:00.000ZT12:00:00»,
+   cioe' Invalid Date. Qui si tiene solo il giorno, comunque arrivi. */
+function giornoIso(v){
+  if(!v) return null;
+  const t = String(v).trim();
+  const m = t.match(/^\d{4}-\d{2}-\d{2}/);
+  return m ? m[0] : null;
+}
+
 function durataChiamata(sec){
   const s = Math.round(Number(sec) || 0);
   if(s <= 0) return null;
@@ -697,9 +709,16 @@ function disegnaTarget(fatte, meta, mia){
    stessa persona non triplica quell'occasione. */
 function disegnaConversione(dati, operatoreScelto){
   const box = $('#conversione');
-  if(!dati || dati.errore){
-    box.classList.add('nascosto');
-    if(dati && dati.errore) console.warn('conversione non calcolata:', dati.errore);
+  if(!dati){ box.classList.add('nascosto'); return; }
+  /* Se il calcolo si e' rotto lo si dice qui, con il motivo: nasconderlo e
+     basta lascia l'operatrice a chiedersi dove sia finito il riquadro, e me a
+     indovinare cosa si e' rotto. */
+  if(dati.errore){
+    box.classList.remove('nascosto');
+    box.innerHTML = `<h4>Conversione</h4>
+      <p class="quota" style="margin:0">Non sono riuscita a calcolarla. Motivo dal server:</p>
+      <p class="quota" style="margin:6px 0 0;color:#98292E;word-break:break-word">${esc(dati.errore)}</p>`;
+    console.warn('conversione non calcolata:', dati.errore);
     return;
   }
 
@@ -1219,7 +1238,7 @@ async function apriScheda(id){
   /* Le date già prese si ritrovano nei campi: senza, riaprire una scheda e
      salvarla cancellava l'impegno preso alla telefonata precedente. */
   if(c.ricontatto_il) q('[data-ricontatto]').value = perInput(new Date(c.ricontatto_il));
-  if(c.profilazione_promessa_il) q('[data-profilazione]').value = String(c.profilazione_promessa_il).slice(0,10);
+  if(giornoIso(c.profilazione_promessa_il)) q('[data-profilazione]').value = giornoIso(c.profilazione_promessa_il);
 
   /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
   if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
@@ -1623,8 +1642,9 @@ function promessaMantenuta(c){
 }
 
 function promessaScaduta(c){
-  if(!c.promessa_aperta || !c.profilazione_promessa_il) return false;
-  return new Date(String(c.profilazione_promessa_il) + 'T18:00:00') < new Date();
+  const g = giornoIso(c.profilazione_promessa_il);
+  if(!c.promessa_aperta || !g) return false;
+  return new Date(g + 'T18:00:00') < new Date();
 }
 
 function dataImpegno(c, esito){
@@ -1637,9 +1657,9 @@ function dataImpegno(c, esito){
   const k = campiPer(e);
 
   if(k.profilazione === 'obbligatoria'){
-    const g = c.profilazione_promessa_il;
+    const g = giornoIso(c.profilazione_promessa_il);
     if(!g) return null;
-    return new Date(String(g) + 'T12:00:00').toLocaleDateString('it-IT',
+    return new Date(g + 'T12:00:00').toLocaleDateString('it-IT',
       {day:'numeric', month:'long'});
   }
   if(k.ricontatto !== 'no' && c.ricontatto_il){
@@ -1648,8 +1668,8 @@ function dataImpegno(c, esito){
          + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
   }
   /* Fuori da quei casi vale quello che c'è: prima la promessa, poi il richiamo. */
-  if(c.profilazione_promessa_il && obiettivoPer(c) === 'profilazione')
-    return new Date(String(c.profilazione_promessa_il) + 'T12:00:00')
+  if(giornoIso(c.profilazione_promessa_il) && obiettivoPer(c) === 'profilazione')
+    return new Date(giornoIso(c.profilazione_promessa_il) + 'T12:00:00')
       .toLocaleDateString('it-IT',{day:'numeric', month:'long'});
   if(!c.ricontatto_il) return null;
   const d = new Date(c.ricontatto_il);
