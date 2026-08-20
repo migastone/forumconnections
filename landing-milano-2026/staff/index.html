@@ -761,9 +761,12 @@ function disegnaKpi(){
     });
 
     const somma = c => righe.reduce((t,x) => t + Number(x[c] || 0), 0);
-    /* La vista la chiama contatti_chiusi: leggendo «chiuse» il riquadro ha
-       sempre mostrato zero, anche dopo una chiusura vera. */
-    const fatte = somma('chiamate'), connesse = somma('connesse'), chiuse = somma('contatti_chiusi');
+    const fatte = somma('chiamate'), connesse = somma('connesse');
+    /* Chiudere non è una cosa sola: una vendita e un «non chiamatemi più»
+       tolgono tutte e due il contatto dalla lavorazione, ma non vogliono dire
+       lo stesso. Il passaggio a un altro consulente sta fuori da entrambe:
+       non è né una vittoria né una sconfitta. */
+    const ok = somma('chiuse_ok'), ko = somma('chiuse_ko'), altrove = somma('chiuse_altrove');
     const alTelefono = somma('durata_totale_secondi');
     const senzaCrono = somma('connesse_senza_cronometro');
     /* Media rifatta qui e non presa dalla vista: sommare le medie di due
@@ -773,7 +776,8 @@ function disegnaKpi(){
     $('#kpi').innerHTML = `
       <div><b>${fatte}</b><small>chiamate</small></div>
       <div><b>${connesse}</b><small>risposte</small></div>
-      <div><b>${chiuse}</b><small>chiuse</small></div>
+      <div><b>${ok}</b><small>chiuse OK</small></div>
+      <div><b>${ko}</b><small>chiuse KO${altrove ? ' · ' + altrove + ' ad altri' : ''}</small></div>
       <div><b>${durataGiornata(alTelefono)}</b><small>al telefono</small></div>
       <div><b>${media ? durataChiamata(media) : '—'}</b><small>durata media${
         senzaCrono ? ` · ${senzaCrono} non cronometrat${senzaCrono===1?'a':'e'}` : ''}</small></div>
