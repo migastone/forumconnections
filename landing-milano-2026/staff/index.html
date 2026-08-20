@@ -48,6 +48,8 @@ header .marchio span{color:var(--gold)}
 .kpi b{display:block;font-size:1.12rem;line-height:1.1}
 .kpi small{color:#B9B4D8;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
 .chi{font-size:.82rem;color:#B9B4D8}
+header select{padding:6px 9px;border:1px solid #4A4180;border-radius:7px;background:#2C2470;color:#fff;max-width:190px}
+header select:focus{outline:2px solid var(--gold);outline-offset:1px}
 
 .barra{background:#fff;border-bottom:1px solid var(--bordo);padding:10px 18px;display:flex;gap:8px;
        flex-wrap:wrap;align-items:center;position:sticky;top:52px;z-index:20}
@@ -71,6 +73,8 @@ main{padding:16px 18px 60px}
 .pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.72rem;font-weight:700;
       background:#EFEEF6;color:#514D77;margin-left:6px;vertical-align:middle}
 .pill.crm{background:#FFF3D6;color:#8A6410}
+.pill.mio{background:#E4EDFB;color:#1F4A86}
+.pill.libero{background:#F0EFF5;color:#7C7898}
 .atti{font-size:1rem;letter-spacing:2px}
 
 /* ---------- scheda ---------- */
@@ -122,6 +126,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   <header>
     <span class="marchio">FORUM <span>RICONTATTI</span></span>
     <span class="chi" id="chi"></span>
+    <select id="f-operatore" title="Di chi vuoi vedere la coda"></select>
     <div class="kpi" id="kpi"></div>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
@@ -160,13 +165,16 @@ const CHIAVE   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const API      = URL_SUPA + '/functions/v1/ricontatti-api';
 const DEPOSITO = 'fc_ricontatti_sessione';
 
-const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non può venire',
+const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Non può venire',
                'Acquistato','Da NON chiamare','Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
 const CONNESSI = new Set(['Ci pensa','Viene','Non può venire','Acquistato','Da NON chiamare','Altro operatore','Altro']);
+/* esiti che chiudono il contatto: dopo questi non si torna in coda.
+   Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
+const TERMINALI = new Set(['Acquistato','Da NON chiamare','Non può venire','Altro operatore']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 
@@ -298,7 +306,35 @@ async function entra(){
   $('#chi').textContent = io.nome + (io.ruolo === 'admin' ? ' · amministratore'
                           : io.linea_migasender ? ' · linea ' + io.linea_migasender : '');
   ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
+  popolaOperatori();
   await Promise.all([caricaCoda(true), caricaKpi()]);
+}
+
+/* L'elenco arriva da /login. Si accorpano gli omonimi: in `operatori` la stessa
+   persona può comparire due volte se ha due indirizzi email, ma per chi lavora
+   è una sola riga, e l'identificativo buono è il proprio quando c'è.         */
+function operatoriAttivi(){
+  const visti = new Map();
+  for(const o of (io?.operatori || [])){
+    const chiave = (o.nome || '').trim().toLowerCase();
+    if(!visti.has(chiave) || o.id === io.operatore_id) visti.set(chiave, o);
+  }
+  return [...visti.values()];
+}
+
+function popolaOperatori(){
+  const sel = $('#f-operatore');
+  sel.innerHTML = '<option value="tutti">TUTTI</option>'
+    + operatoriAttivi().map(o => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('')
+    + '<option value="nessuno">Ancora da assegnare</option>';
+  /* si parte dalla propria coda, che è la cosa che serve appena si entra */
+  sel.value = [...sel.options].some(o => o.value === io.operatore_id) ? io.operatore_id : 'tutti';
+}
+
+/* Elenco per le tendine dentro la scheda, dove serve anche «nessuno». */
+function opzioniOperatore(selezionato){
+  return '<option value="">— nessuno —</option>' + operatoriAttivi().map(o =>
+    `<option value="${esc(o.id)}"${o.id === selezionato ? ' selected' : ''}>${esc(o.nome)}</option>`).join('');
 }
 
 function esci(){ scordaSessione(); location.reload(); }
@@ -322,6 +358,13 @@ async function caricaCoda(azzera = false){
   if($('#f-urgenza').value)    p.set('urgenza', $('#f-urgenza').value);
   if($('#f-stato').value)      p.set('stato',   $('#f-stato').value);
 
+  /* Quando guardi la tua coda vedi anche i contatti ancora liberi: senza questo,
+     il primo giorno la coda sarebbe vuota per tutti, perché un contatto risulta
+     assegnato solo dal momento in cui qualcuno apre la sua prima chiamata.    */
+  const chi = $('#f-operatore').value || 'tutti';
+  const anchLiberi = chi === io?.operatore_id;
+  if(chi !== 'tutti'){ p.set('operatore', chi); if(anchLiberi) p.set('liberi','1'); }
+
   try{
     const d = await api('/coda?' + p);
     ultimoTotale = d.totale;
@@ -334,7 +377,8 @@ async function caricaCoda(azzera = false){
       }});
     }
     $('#conteggio').textContent =
-      `${d.totale.toLocaleString('it-IT')} contatti in coda · mostrati ${Math.min((pagina+1)*50, d.totale)} · ${d.ms} ms`;
+      `${d.totale.toLocaleString('it-IT')} contatti in coda${anchLiberi ? ' (i tuoi più quelli ancora liberi)' : ''}`
+      + ` · mostrati ${Math.min((pagina+1)*50, d.totale)} · ${d.ms} ms`;
     $('#lista').insertAdjacentHTML('beforeend', d.righe.map(riga).join(''));
     $('#altri').style.display = (pagina+1)*50 >= d.totale ? 'none' : '';
   }catch(e){ $('#conteggio').textContent = 'Errore: ' + e.message; }
@@ -353,8 +397,17 @@ function riga(r){
     <div class="destra">
       <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b></div>
       <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
+      <div>${etichettaAssegnato(r)}</div>
     </div>
   </div>`;
+}
+
+/* Chi ha in carico il contatto: si vede nella riga e nella scheda, così non
+   serve aprire nulla per sapere se è tuo, di un'altra o ancora di nessuno.   */
+function etichettaAssegnato(r){
+  if(!r.operatore_assegnato) return '<span class="pill libero">libero</span>';
+  const mio = r.operatore_assegnato === io?.operatore_id;
+  return `<span class="pill ${mio ? 'mio' : ''}">${mio ? 'tuo' : esc(r.operatore_assegnato_nome || 'assegnato')}</span>`;
 }
 
 $('#lista').addEventListener('click', e => {
@@ -363,7 +416,8 @@ $('#lista').addEventListener('click', e => {
 });
 $('#altri').onclick = () => { pagina++; caricaCoda(false); };
 $('#ricarica').onclick = () => caricaCoda(true);
-$('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange = () => caricaCoda(true);
+$('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange =
+  $('#f-operatore').onchange = () => caricaCoda(true);
 let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTimeout(()=>caricaCoda(true), 300); };
 
 /* ═══════════════ KPI ═══════════════ */
@@ -387,6 +441,7 @@ async function apriScheda(id){
   try{ d = await api('/contatto/' + id); }
   catch(e){ return alert(e.message); }
   const c = d.contatto, storico = d.chiamate || [];
+  const msg = componiMessaggio(c);
 
   const velo = document.createElement('div');
   velo.className = 'velo';
@@ -395,6 +450,7 @@ async function apriScheda(id){
     <header>
       <span class="marchio">${esc([c.nome,c.cognome].filter(Boolean).join(' ')) || '(senza nome)'}</span>
       <span class="chi">${esc(c.telefono || 'nessun telefono')}</span>
+      <span class="chi" data-intestazione-assegnato>${etichettaAssegnato(c)}</span>
       <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
     </header>
     <div class="corpo">
@@ -410,12 +466,21 @@ async function apriScheda(id){
              ${c.ultima_chiamata_il?' il '+dataOra(c.ultima_chiamata_il):''}</div>
         ${d.ultima_nota ? `<div style="margin-top:5px;color:var(--tenue)">Ultima nota: “${esc(d.ultima_nota.testo)}”</div>`:''}
         ${c.note_origine ? `<div style="margin-top:5px;color:var(--tenue)">Storico: ${esc(c.note_origine)}</div>`:''}
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span>In carico a</span>
+          <select class="campo" style="width:auto;margin:0" data-assegna>${opzioniOperatore(c.operatore_assegnato)}</select>
+          <span data-esito-assegna style="color:var(--tenue)"></span>
+        </div>
       </div>
 
       <div class="azioni">
         <button class="btn oro" data-avvia>Avvia chiamata</button>
         <span class="cronometro" data-crono>05:00</span>
-        <button class="btn" data-wa ${c.telefono?'':'disabled'}>WhatsApp</button>
+        ${TERMINALI.has(c.ultimo_esito || '') ? ''
+          : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
+        <button class="btn" data-wa ${c.telefono?'':'disabled'}>WhatsApp n.${msg.tentativo}</button>
+        <button class="btn" data-email ${c.email?'':'disabled'}>Email</button>
+        ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
       </div>
 
       <div data-form class="nascosto">
@@ -513,12 +578,108 @@ async function apriScheda(id){
     }
   };
 
+  /* ---- riassegnazione: il contatto passa nella coda dell'altra persona ---- */
+  q('[data-assegna]').onchange = async (e) => {
+    const a = e.target.value || null;
+    e.target.disabled = true;
+    q('[data-esito-assegna]').textContent = 'sposto…';
+    try{
+      await api('/assegna', { method:'POST', body: JSON.stringify({ contatto_id: c.id, operatore_id: a }) });
+      c.operatore_assegnato = a;
+      c.operatore_assegnato_nome = a ? (operatoriAttivi().find(o => o.id === a)?.nome ?? null) : null;
+      q('[data-intestazione-assegnato]').innerHTML = etichettaAssegnato(c);
+      q('[data-esito-assegna]').textContent = a ? 'spostato nella sua coda' : 'rimesso fra i liberi';
+      caricaCoda(true);
+    }catch(err){ q('[data-esito-assegna]').textContent = err.message; }
+    e.target.disabled = false;
+  };
+
+  /* ---- il tentativo a vuoto, in un colpo solo ----
+     Apre e chiude la chiamata senza passare dal modulo: nessuna nota da
+     scrivere, perché la chiamata non ha ricevuto risposta. `connessa: false`
+     va detto esplicitamente, altrimenti il database considera «Richiamata»
+     una chiamata connessa e pretende venti caratteri di nota.
+     Il messaggio si compone PRIMA di registrare: dopo, lo stato è cambiato
+     e verrebbe fuori il messaggio del giro successivo.                      */
+  if(q('[data-nonrisponde]')) q('[data-nonrisponde]').onclick = async () => {
+    const bottone = q('[data-nonrisponde]');
+    const secondo = (c.ultimo_esito || 'Da Contattare') === 'Richiamata';
+    const m = componiMessaggio(c);
+    const quando = secondo ? null : prossimoGiornoLavorativo();
+    if(!confirm(secondo
+        ? 'Secondo tentativo a vuoto: il contatto si chiude con «Non risponde» e parte il WhatsApp n.2. Procedo?'
+        : `Primo tentativo a vuoto: il contatto passa in «Richiamata» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})} e parte il WhatsApp n.1. Procedo?`)) return;
+
+    /* la finestra si apre nel gesto del clic, prima di qualunque attesa:
+       aperta più tardi verrebbe bloccata dal browser */
+    const numero = (c.telefono||'').replace(/\D/g,'');
+    if(numero) window.open(`https://wa.me/${numero}?text=${encodeURIComponent(m.testo)}`, '_blank', 'noopener');
+
+    bottone.disabled = true;
+    try{
+      let id = chiamataId;
+      if(!id){
+        const r = await api('/chiamata', { method:'POST',
+          body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
+        id = r.chiamata.id;
+      }
+      await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify({
+        esito: secondo ? 'Non risponde' : 'Richiamata',
+        connessa: false,
+        durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : 0,
+        ricontatto_il: quando ? quando.toISOString() : null
+      })});
+      await registraMessaggio(c, m, 'whatsapp', id);
+      chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+    }catch(e){ alert(e.message); bottone.disabled = false; }
+  };
+
+  /* ---- ripristino ----
+     Non si cancella niente: si registra una nuova chiamata con esito
+     «Da Contattare». La vista guarda solo l'ultima, quindi il contatto torna
+     in coda, e nello storico resta scritto che c'è stato un ripristino.     */
+  if(q('[data-ripristina]')) q('[data-ripristina]').onclick = async () => {
+    if(!confirm(`Rimetto ${c.nome||'il contatto'} fra quelli da contattare? Lo storico delle chiamate resta.`)) return;
+    q('[data-ripristina]').disabled = true;
+    try{
+      const r = await api('/chiamata', { method:'POST',
+        body: JSON.stringify({ contatto_id: c.id, brand: marchioPer(c) }) });
+      await api('/chiamata/' + r.chiamata.id, { method:'PATCH', body: JSON.stringify({
+        esito: 'Da Contattare', connessa: false, durata_secondi: 0,
+        note: `Rimesso in coda da ${io.nome}: si riparte da «${c.ultimo_esito}».`
+      })});
+      chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+    }catch(e){ alert(e.message); q('[data-ripristina]').disabled = false; }
+  };
+
+  /* ---- WhatsApp ed email, con il testo giusto per lo stato del contatto ---- */
   q('[data-wa]').onclick = () => {
     const n = (c.telefono||'').replace(/\D/g,'');
     if(!n) return;
-    const testo = `Ciao ${c.nome||''}, sono ${io.nome} di ${marchioPer(c)}.`;
-    window.open(`https://wa.me/${n}?text=${encodeURIComponent(testo)}`, '_blank', 'noopener');
+    window.open(`https://wa.me/${n}?text=${encodeURIComponent(msg.testo)}`, '_blank', 'noopener');
+    registraMessaggio(c, msg, 'whatsapp', chiamataId);
   };
+
+  q('[data-email]').onclick = () => {
+    if(!c.email) return;
+    window.location.href = `mailto:${encodeURIComponent(c.email)}`
+      + `?subject=${encodeURIComponent(msg.oggetto)}&body=${encodeURIComponent(msg.testo)}`;
+    registraMessaggio(c, msg, 'email', chiamataId);
+  };
+}
+
+/* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
+   al secondo si chiude. */
+function etichettaNonRisponde(c){
+  if((c.ultimo_esito || 'Da Contattare') === 'Richiamata') return 'Non risponde · chiudi';
+  const g = prossimoGiornoLavorativo();
+  return 'Non risponde · richiamo ' + g.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+}
+
+/* Si ripristina solo ciò che non è chiuso davvero, e che non è già in coda. */
+function ripristinabile(c){
+  const e = c.ultimo_esito || 'Da Contattare';
+  return e !== 'Da Contattare' && !TERMINALI.has(e);
 }
 
 /* il marchio con cui ci si presenta cambia con la provenienza del contatto */
@@ -526,6 +687,84 @@ function marchioPer(c){
   const f = c.fonti || [];
   if(f.some(x => String(x).startsWith('bigbang'))) return 'MigaMATCH';
   return 'Segnalazione Vincente';
+}
+
+/* ═══════════════ flusso richiamata e testi ═══════════════
+   Due tentativi a vuoto, due messaggi diversi.
+
+   1º tentativo a vuoto → si manda il WA n.1 e il contatto passa in «Richiamata»
+      con ricontatto_il al primo giorno lavorativo successivo: il giorno dopo si
+      ritrova in cima alla coda, perché la vista ordina per urgenza.
+   2º tentativo a vuoto → il contatto si chiude con «Non risponde» e parte il
+      WA n.2, che cambia secondo l'obiettivo della fascia:
+        · PROFILAZIONE per i BigBang non profilati (la fase di agosto)
+        · FORUM       per tutte le altre fasce
+   Da uno stato non terminale si può sempre tornare a «Da Contattare»
+   registrando una nuova chiamata: lo storico non si cancella mai.            */
+
+/* Il giorno lavorativo successivo, alle 9 del mattino: sabato e domenica si saltano. */
+function prossimoGiornoLavorativo(da){
+  const d = new Date(da || Date.now());
+  d.setDate(d.getDate() + 1);
+  while(d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  return d;
+}
+
+/* L'obiettivo della telefonata non è lo stesso per tutti: sui BigBang non
+   profilati si punta alla profilazione, su tutti gli altri al Forum.         */
+function obiettivoPer(c){
+  return /bigbang non profilato/i.test(c.fascia || '') ? 'profilazione' : 'forum';
+}
+
+/* I testi sono quelli decisi dal cliente: non si riscrivono a mano qui.
+   [NOME] e [OPERATORE] sono gli unici pezzi che cambiano.                    */
+const TESTI = {
+  primo: (nome, op) =>
+    `Ciao ${nome}, sono ${op} di MigaMATCH Segnalazione Vincente, ti ho provato a chiamare perché avevo un regalo per te da darti, molto utile per la tua attività. Quando possiamo sentirci? Ti richiamo domani, salva il mio numero. Ciao e buon lavoro. ${op}`,
+  secondo_profilazione: (nome, op) =>
+    `Ciao ${nome}, sono di nuovo ${op} ho provato a richiamarti purtroppo senza successo. Per prima cosa volevo darti un regalo, la copia di agosto di Economy https://mssl.it/economy22. Inoltre volevo solo dirti che ho guardato il tuo profilo e abbiamo persone interessate a creare sinergie con te, per ricevere gratuitamente il tuo contatto e fare un primo match il nostro algoritmo ha bisogno di sapere chi sei in specifico, investi 10 minuti e profilati è gratuito https://mssl.it/profilati . Una curiosità, come mai non hai proceduto fino ad ora? Il tuo feedback per me è prezioso. Buon lavoro intanto`,
+  secondo_forum: (nome, op) =>
+    `Ciao ${nome}, sono di nuovo ${op} ho provato a richiamarti purtroppo senza successo. Per prima cosa volevo darti un regalo, la copia di agosto di Economy https://mssl.it/economy22. Inoltre volevo solo dirti che ho guardato il tuo profilo e ci piacerebbe che tu partecipi al Forum Connections di Milano il 17 ottobre, dove conoscerai 42 persone in target di alto livello. Potrebbe interessarti? Se avessi un'offerta riservata per te la vorresti sapere?`
+};
+
+const OGGETTI = {
+  primo: nome => `${nome}, ti ho cercato al telefono: avevo un regalo per te`,
+  secondo_profilazione: nome => `${nome}, il regalo di Economy e il tuo profilo MigaMATCH`,
+  secondo_forum: nome => `${nome}, il regalo di Economy e il Forum Connections del 17 ottobre`
+};
+
+/* Decide da sola quale dei due messaggi tocca: se il contatto è già in
+   «Richiamata» il primo è già partito, quindi tocca il secondo.
+   Restituisce anche il tipo con cui registrare l'invio: il database ammette
+   solo recap · promemoria · economy · benvenuto, e il n.1 (che annuncia il
+   richiamo) è un promemoria, il n.2 (che porta il regalo) è economy.         */
+function componiMessaggio(c, operatore){
+  const nome = (c.nome || '').trim() || 'ciao';
+  const op = (operatore ?? io?.nome ?? '').trim();
+  const primo = (c.ultimo_esito || 'Da Contattare') !== 'Richiamata';
+  const obiettivo = obiettivoPer(c);
+  const quale = primo ? 'primo' : ('secondo_' + obiettivo);
+  return {
+    quale,
+    obiettivo,
+    tentativo: primo ? 1 : 2,
+    tipo: primo ? 'promemoria' : 'economy',
+    oggetto: OGGETTI[quale](nome),
+    testo: TESTI[quale](nome, op)
+  };
+}
+
+/* L'invio resta manuale (wa.me / mailto), ma resta anche scritto: senza questo
+   nessuno saprebbe più chi ha ricevuto cosa.                                 */
+async function registraMessaggio(c, m, canale, chiamataId){
+  try{
+    await api('/messaggio', { method:'POST', body: JSON.stringify({
+      contatto_id: c.id, tipo: m.tipo, canale,
+      chiamata_id: chiamataId ?? null,
+      testo: canale === 'email' ? (m.oggetto + '\n\n' + m.testo) : m.testo
+    })});
+  }catch(e){ console.warn('invio non registrato:', e.message); }
 }
 
 /* ═══════════════ pausa ═══════════════ */
