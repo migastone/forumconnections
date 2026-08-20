@@ -133,6 +133,16 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .testo-script .obz{margin:0 0 10px}
 .testo-script .obz b{display:block;color:var(--navy)}
 .mantenuta{color:#22603F;font-weight:700}
+.sosia{margin:12px 0 0;padding:12px 14px;border:1px solid #E8C98F;border-radius:10px;background:#FFFBF2}
+.sosia h4{margin:0 0 4px;font-size:.92rem;color:#8A6A17}
+.sosia p{margin:0 0 10px;font-size:.87rem;color:var(--tenue)}
+.sosia .cand{display:flex;gap:10px;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;padding:8px 0;border-top:1px solid #F0E2C4}
+.sosia .cand .btn{width:auto;padding:7px 14px;font-size:.85rem}
+.pill.no{background:#FDECEC;color:#98292E}
+.pill.si{background:#E2F1E8;color:#22603F}
+.riga-email{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem}
+.riga-email input{width:auto;min-width:230px;margin:0;padding:6px 9px}
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
@@ -514,7 +524,8 @@ async function entra(){
   ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
   capacitaOra = { capacita: io.capacita, invio_automatico: io.invio_automatico, motivo: io.motivo };
   popolaOperatori();
-  await Promise.all([caricaCoda(true), caricaKpi(), caricaDaMandare()]);
+  await Promise.all([caricaSosia(), caricaKpi(), caricaDaMandare()]);
+  await caricaCoda(true);
 }
 
 /* L'elenco arriva da /login. Si accorpano gli omonimi: in `operatori` la stessa
@@ -600,7 +611,9 @@ function riga(r){
         ${r.crm_consulente ? `<span class="pill crm">CRM · ${esc(r.crm_consulente)}</span>` : ''}
         ${(r.profilato_ora ?? r.profilato) ? '<span class="pill">profilato</span>' : ''}
         <span class="pill ${obiettivoPer(r)==='profilazione'?'cta-prof':'cta-forum'}">${obiettivoPer(r)==='profilazione'?'profilazione':'Forum'}</span>
-        ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}</div>
+        ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}
+        ${sosiaNoti.has(r.id) ? `<span class="pill no" title="Su MigaMATCH c'è un'anagrafica con lo stesso nome ma un'altra email">⚠ forse già iscritto${
+          sosiaNoti.get(r.id).profilato ? ' e profilato' : ''}</span>` : ''}</div>
       <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
     </div>
     <div class="destra">
@@ -691,6 +704,20 @@ function festeggiaSeFinito(fatte, meta){
 }
 
 let kpiUltimi = null;
+
+/* ═══════════════ omonimie con MigaMATCH ═══════════════
+   Chi si e' iscritto con un'email diversa dalla nostra resta scollegato, e la
+   sua scheda continua a dire «da profilare» anche quando il profilo ce l'ha.
+   L'elenco si scarica una volta per sessione: sono anagrafiche, non cambiano
+   nel giro di un turno. */
+let sosiaNoti = new Map();
+
+async function caricaSosia(){
+  try{
+    const d = await api('/sosia');
+    sosiaNoti = new Map((d.righe || []).map(r => [r.id, r]));
+  }catch(e){ sosiaNoti = new Map(); }
+}
 
 async function caricaKpi(){
   try{
@@ -823,12 +850,44 @@ async function apriScheda(id){
              ${c.ultima_chiamata_il?' il '+dataOra(c.ultima_chiamata_il):''}</div>
         ${d.ultima_nota ? `<div style="margin-top:5px;color:var(--tenue)">Ultima nota: “${esc(d.ultima_nota.testo)}”</div>`:''}
         ${c.note_origine ? `<div style="margin-top:5px;color:var(--tenue)">Storico: ${esc(c.note_origine)}</div>`:''}
+        <div class="riga-email">
+          <span style="color:var(--tenue)">Email</span>
+          <b data-email-attuale>${esc(c.email || '— nessuna —')}</b>
+          <button class="link" data-correggi-email>correggi</button>
+          <span data-esito-email style="color:var(--tenue)"></span>
+        </div>
+        <div class="riga-email nascosto" data-form-email>
+          <input class="campo" type="email" data-nuova-email value="${esc(c.email || '')}" placeholder="nome@dominio.it">
+          <button class="btn" style="width:auto;padding:7px 14px" data-salva-email>Salva</button>
+          <button class="link" data-annulla-email>annulla</button>
+        </div>
+
         <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span>In carico a</span>
           <select class="campo" style="width:auto;margin:0" data-assegna>${opzioniOperatore(c.operatore_assegnato)}</select>
           <span data-esito-assegna style="color:var(--tenue)"></span>
         </div>
       </div>
+
+      ${(d.sosia || []).length ? `<div class="sosia">
+        <h4>⚠ Forse si è iscritto con un'altra email</h4>
+        <p>Su MigaMATCH c'è ${(d.sosia||[]).length === 1 ? "un'anagrafica" : (d.sosia||[]).length + ' anagrafiche'}
+           con lo stesso nome e cognome, ma un indirizzo diverso dal nostro. <b>Controlla prima di collegare</b>:
+           gli omonimi esistono, e collegare la persona sbagliata le attribuirebbe il profilo di un altro.
+           Se è lui, collegandolo vedremo il suo profilo vero e smetteremo di chiedergli di profilarsi.</p>
+        ${(d.sosia||[]).map(x => `<div class="cand">
+          <div>
+            <div><b>${esc(x.email || '— senza email —')}</b> · ${esc(x.telefono || 'senza telefono')}</div>
+            <div style="margin-top:3px">
+              <span class="pill ${x.telefono_combacia ? 'si' : 'no'}">${x.telefono_combacia ? 'stesso telefono' : 'telefono diverso'}</span>
+              <span class="pill ${x.profilato ? 'si' : ''}">${x.profilato ? 'profilato' : 'non profilato'}</span>
+              <span class="pill">iscritto ${x.iscritto_il ? new Date(x.iscritto_il).toLocaleDateString('it-IT',{month:'short',year:'numeric'}) : '—'}</span>
+            </div>
+          </div>
+          <button class="btn" data-collega="${x.connector_uid}"
+                  data-collega-email="${esc(x.email || '')}">È lui, collega</button>
+        </div>`).join('')}
+      </div>` : ''}
 
       <div class="azioni">
         <button class="btn oro" data-gestisci>Gestisci contatto</button>
@@ -944,6 +1003,61 @@ async function apriScheda(id){
 
   const chiudi = () => { if(cronometro) clearInterval(cronometro); cronometro = null; velo.remove(); };
   q('[data-chiudi]').onclick = chiudi;
+
+  /* ---- correzione dell'email ----
+     L'indirizzo che abbiamo puo' essere vecchio o sbagliato, e da quello
+     dipendono l'invio della mail e il riconoscimento di chi ha comprato. */
+  q('[data-correggi-email]').onclick = () => {
+    q('[data-form-email]').classList.remove('nascosto');
+    q('[data-nuova-email]').focus();
+  };
+  q('[data-annulla-email]').onclick = () => q('[data-form-email]').classList.add('nascosto');
+  q('[data-salva-email]').onclick = async () => {
+    const nuova = q('[data-nuova-email]').value.trim().toLowerCase();
+    if(!nuova || nuova === (c.email || '').toLowerCase())
+      return q('[data-form-email]').classList.add('nascosto');
+    q('[data-salva-email]').disabled = true;
+    try{
+      const r = await api('/anagrafica', { method:'POST',
+        body: JSON.stringify({ contatto_id: c.id, email: nuova }) });
+      c.email = r.contatto.email;
+      q('[data-email-attuale]').textContent = c.email;
+      q('[data-form-email]').classList.add('nascosto');
+      q('[data-esito-email]').textContent = 'aggiornata';
+      q('[data-email]').disabled = false;
+      aggiornaEtichetteMessaggi();
+      caricaCoda(true);
+    }catch(e){ alert(e.message); }
+    q('[data-salva-email]').disabled = false;
+  };
+
+  /* ---- collegamento all'account MigaMATCH ----
+     E' la correzione che vale di piu': da qui in poi la scheda smette di
+     chiedergli di profilarsi se il profilo ce l'ha gia'. Ma e' anche quella che
+     sbagliata fa piu' danno, quindi si chiede conferma con i dati sotto gli
+     occhi e si dice cosa cambia. */
+  velo.querySelectorAll('[data-collega]').forEach(b => {
+    b.onclick = async () => {
+      const uid = b.getAttribute('data-collega');
+      const suaEmail = b.getAttribute('data-collega-email') || '';
+      if(!confirm(`Collego ${(c.nome||'questo contatto').trim()} all'account MigaMATCH ${uid}?\n\n`
+        + `Da qui in poi la sua scheda mostrera' il profilo di quell'account: se e' gia' profilato,\n`
+        + `smetteremo di chiedergli di profilarsi.\n\n`
+        + `Fallo solo se sei sicura che sia la stessa persona.`)) return;
+      const anche = suaEmail && suaEmail.toLowerCase() !== (c.email||'').toLowerCase()
+        && confirm(`Aggiorno anche la nostra email da\n${c.email || '—'}\na\n${suaEmail}?\n\n`
+          + `E' quella con cui usa MigaMATCH: le nostre mail gli arriverebbero li'.`);
+      b.disabled = true;
+      try{
+        await api('/anagrafica', { method:'POST', body: JSON.stringify({
+          contatto_id: c.id, connector_uid: Number(uid),
+          email: anche ? suaEmail.toLowerCase() : null })});
+        chiudi();
+        await Promise.all([caricaCoda(true), caricaKpi()]);
+        apriScheda(c.id);
+      }catch(e){ alert(e.message); b.disabled = false; }
+    };
+  });
   velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
 
   /* Apre la gestione. Non scrive niente: chi apre per cambiare l'operatrice
