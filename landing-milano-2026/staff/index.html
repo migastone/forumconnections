@@ -109,6 +109,17 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   transition:left .6s ease;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
 .pista .arrivo{position:absolute;right:-2px;top:-17px;font-size:1.1rem;line-height:1}
 .target.fatto-tutto{border-color:var(--gold);background:#FFFCF3}
+.conv{margin:0 0 14px;padding:12px 16px;border:1px solid var(--bordo);border-radius:12px;background:#fff}
+.conv h4{margin:0 0 10px;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--tenue)}
+.conv table{width:100%;border-collapse:collapse;font-size:.9rem}
+.conv th{text-align:right;font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--tenue);font-weight:700;padding:0 0 6px}
+.conv th:first-child{text-align:left}
+.conv td{padding:6px 0;border-top:1px solid var(--bordo);text-align:right}
+.conv td:first-child{text-align:left;color:var(--tenue)}
+.conv td b{font-size:1.02rem;color:var(--navy)}
+.conv .quota{color:var(--tenue);font-size:.84rem}
+.conv .muti b{color:#98292E}
 
 .passi{margin:14px 0 0;border:1px solid #DCE2EF;border-radius:10px;background:#FAFBFE}
 .passi>summary{cursor:pointer;padding:11px 14px;font-size:.83rem;letter-spacing:.04em;
@@ -218,6 +229,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
   <main>
     <div id="target" class="target nascosto"></div>
+    <div id="conversione" class="conv nascosto"></div>
     <p class="conteggio" id="conteggio">Carico…</p>
     <div id="lista"></div>
     <div style="text-align:center;margin-top:14px">
@@ -678,6 +690,51 @@ function disegnaTarget(fatte, meta, mia){
   if(mia.eMia) festeggiaSeFinito(fatte, meta);
 }
 
+/* Quanto del lavoro si trasforma in quello che ci serve davvero: un profilo
+   completato per chi deve profilarsi, un biglietto per chi punta al Forum.
+   Il denominatore sono le PERSONE RAGGIUNTE, non le chiamate: chi non ti ha
+   sentito non l'hai avuto occasione di convertirlo, e chiamare tre volte la
+   stessa persona non triplica quell'occasione. */
+function disegnaConversione(dati, operatoreScelto){
+  const box = $('#conversione');
+  if(!dati){ box.classList.add('nascosto'); return; }
+
+  const mie = righe => (righe || []).filter(r =>
+    operatoreScelto === 'tutti' || r.operatore_id === operatoreScelto);
+
+  const perCta = (righe, cta) => {
+    const r = mie(righe).filter(x => x.cta === cta);
+    const n = c => r.reduce((t,x) => t + Number(x[c] || 0), 0);
+    return { raggiunte: n('persone_raggiunte'), conversioni: n('conversioni'),
+             chiamate: n('persone_chiamate'), mute: n('persone_mute') };
+  };
+  const quota = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : '—';
+
+  const cella = x => x.raggiunte
+    ? `<td><b>${x.conversioni}</b> su ${x.raggiunte} <span class="quota">· ${quota(x.conversioni, x.raggiunte)}</span></td>`
+    : '<td class="quota">nessuno raggiunto</td>';
+
+  const p15 = perCta(dati.giorni15, 'PROFILAZIONE'), p30 = perCta(dati.giorni30, 'PROFILAZIONE');
+  const f15 = perCta(dati.giorni15, 'FORUM'),        f30 = perCta(dati.giorni30, 'FORUM');
+  const tot = righe => { const a = perCta(righe,'PROFILAZIONE'), b = perCta(righe,'FORUM');
+    return { chiamate: a.chiamate + b.chiamate, mute: a.mute + b.mute }; };
+  const m15 = tot(dati.giorni15), m30 = tot(dati.giorni30);
+
+  box.classList.remove('nascosto');
+  box.innerHTML = `
+    <h4>Conversione — una persona conta una volta, si guarda chi ha risposto</h4>
+    <table>
+      <tr><th>Obiettivo</th><th>ultimi 15 giorni</th><th>ultimi 30 giorni</th></tr>
+      <tr><td>Profilo completato</td>${cella(p15)}${cella(p30)}</tr>
+      <tr><td>Biglietto comprato</td>${cella(f15)}${cella(f30)}</tr>
+      <tr class="muti"><td>Non hanno risposto</td>
+        <td><b>${m15.mute}</b> su ${m15.chiamate} <span class="quota">· ${quota(m15.mute, m15.chiamate)}</span></td>
+        <td><b>${m30.mute}</b> su ${m30.chiamate} <span class="quota">· ${quota(m30.mute, m30.chiamate)}</span></td></tr>
+    </table>
+    <p class="quota" style="margin:9px 0 0">Una conversione conta se arriva entro
+      ${dati.attribuzione_giorni || 30} giorni dalla prima telefonata a cui la persona ha risposto.</p>`;
+}
+
 /* Il popup una volta sola al giorno: la barra si ridisegna a ogni chiamata
    registrata, e senza questo controllo la festa ripartirebbe ogni volta. */
 function festeggiaSeFinito(fatte, meta){
@@ -759,6 +816,8 @@ function disegnaKpi(){
     else disegnaTarget(righe.reduce((t,x) => t + Number(x.chiamate || 0), 0), meta, {
       eMia, etichetta: eMia ? '' : (nome || '')
     });
+
+    disegnaConversione(d.conversione, scelto);
 
     const somma = c => righe.reduce((t,x) => t + Number(x[c] || 0), 0);
     const fatte = somma('chiamate'), connesse = somma('connesse');
