@@ -314,6 +314,27 @@ const CAMPI_ESITO = {
 };
 /* Tutto il resto chiude il contatto: nessuna data da prendere. */
 const CAMPI_DEFAULT = { ricontatto:'no', profilazione:'no' };
+
+/* Cosa vuol dire davvero lo stato che hai scelto. Due voci del menu si
+   somigliano abbastanza da prendere l'una per l'altra — «Da Ricontattare» e
+   «Non risponde» — ed e' gia' successo: una chiamata a vuoto e' finita
+   registrata come conversazione. Una riga sotto il menu costa niente e chiude
+   la questione prima che si ripeta. */
+const SPIEGA_ESITO = {
+  'Da Ricontattare':       'Avete parlato e vi siete dati un appuntamento. Se invece il telefono ha squillato a vuoto, chiudi qui e usa il pulsante «Non risponde».',
+  'Non risponde':          'Secondo squillo a vuoto: parte il messaggio n.2 e il contatto si mette in attesa.',
+  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Si risente alla data qui sotto, senza impegni scritti.',
+  'Promette Profilazione': 'Ha promesso di completare il profilo entro la data qui sotto. È quella a farlo tornare in cima.',
+  'Profilato - Call back': 'Si è profilato dopo una nostra chiamata: si richiama per il feedback sui primi match.',
+  'Viene':                 'Ha detto che viene ma non ha ancora pagato: resta in lavorazione finché non compra.',
+  'Non può venire':        'Non può esserci il 17 ottobre. Chiude la lavorazione.',
+  'Acquistato':            'Ha comprato il biglietto. Chiude la lavorazione.',
+  'Non interessato':       'Ha detto di no. Resta in lista, in fondo e in grigio, ma non si richiama.',
+  'Richiede disiscrizione':'Ha chiesto di essere cancellato: esce dalla lista e non ci rientra.',
+  'Altro operatore':       'Lo segue già un altro consulente: qui la lavorazione si chiude.',
+  'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo.',
+  'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.'
+};
 const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
@@ -815,6 +836,7 @@ async function apriScheda(id){
         <div class="griglia">
           <div>
             <label>Esito</label>
+            <div class="serve" data-spiega-esito style="display:none;margin:0 0 6px"></div>
             <select class="campo" data-esito>${ESITI.filter(e => {
               /* L'esito già registrato resta sempre selezionabile, anche se
                  fuori contesto: nasconderlo impedirebbe di risalvare la scheda.
@@ -970,6 +992,10 @@ async function apriScheda(id){
   const adattaCampi = () => {
     const esito = q('[data-esito]').value;
     const k = campiPer(esito);
+
+    const spiega = q('[data-spiega-esito]');
+    spiega.textContent = SPIEGA_ESITO[esito] || '';
+    spiega.style.display = SPIEGA_ESITO[esito] ? '' : 'none';
 
     q('[data-box-ricontatto]').style.display   = k.ricontatto   === 'no' ? 'none' : '';
     q('[data-box-profilazione]').style.display = k.profilazione === 'no' ? 'none' : '';
@@ -1485,19 +1511,19 @@ const TESTI = {
     `Ciao ${p.nome}, sono ${p.op} di MigaMATCH Segnalazione Vincente, ti ho provato a chiamare perché avevo un regalo per te da darti, molto utile per la tua attività. Quando possiamo sentirci? Ti richiamo domani, salva il mio numero. Ciao e buon lavoro. ${p.op}`,
 
   quattro_a: p =>
-`Ciao ${p.nome}, sono ${p.op} di MigaMATCH. Ti ho cercato al telefono ma ti ho preso in un brutto momento, immagino.
+`Ciao ${p.nome}, sono ${p.op} di MigaMATCH. Ho provato a chiamarti, ma devo aver beccato un brutto momento.
 Ti scrivo il motivo in tre righe: il tuo profilo su MigaMATCH è rimasto a metà, e finché è così l'algoritmo non ti può presentare a nessuno. Completarlo sono dieci minuti e da lì partono i match: persone scelte su oltre 4 milioni di parametri, non contatti a caso. Se vuoi testarlo gratuitamente, 10 minuti investiti bene: vai qui https://mssl.it/profilati
 Intanto ti lascio un regalo, la copia di Economy di agosto — a pagina 22 ci siamo noi: https://mssl.it/economy
 Se mi dici quando ti fa comodo, ti richiamo io.`,
 
   quattro_b: p =>
-`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ti ho cercato ma non ti ho trovato.
+`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ho provato a chiamarti senza riuscirci.
 Ti scrivo perché al Forum di ${p.edizione} c'eri, e il *17 ottobre siamo a Milano* con un'edizione diversa da tutte le precedenti: i tavoli non li componiamo più noi a mano, li calcola MigaMATCH incrociando oltre 4 milioni di parametri. Sei round, 42 persone, pranzo incluso.
 Ti lascio anche la copia di Economy di agosto, è un regalo: https://mssl.it/economy
 Se ti va di sentirci due minuti, dimmi tu quando, ho una proposta speciale da farti.`,
 
   quattro_c: p =>
-`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ti ho cercato al telefono senza fortuna, provo qui.
+`Ciao ${p.nome}, sono ${p.op} di Segnalazione Vincente. Ho provato a chiamarti senza fortuna, provo qui.
 Il *17 ottobre a Milano* portiamo dal vivo quello che hai già visto online: una giornata intera, sei round, 42 persone conosciute — e chi ti siede accanto lo decide un algoritmo, non il caso. Pranzo incluso.
 Intanto un regalo: Economy di agosto, a pagina 22 ci siamo noi. https://mssl.it/economy
 Se mi dici un orario buono ti richiamo io, il tempo di due domande, ho una proposta riservata da farti.`,
@@ -1590,7 +1616,7 @@ Se nel frattempo ti viene un dubbio, scrivimi pure qui.`,
 Nessun impegno e nessun seguito. Se un domani ti serve, sai dove trovarmi — buon lavoro!`,
 
   benvenuto_acquisto: p =>
-`Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Benvenuto: il tuo posto per il *17 ottobre* c'è.
+`Ciao ${p.nome}, sono ${p.op} di ${p.brand}. Il tuo posto per il *17 ottobre* c'è.
 
 Come ti dicevo al telefono, qui trovi le istruzioni passo passo — come prepararti, cosa fare prima e come funziona la giornata:
 ${p.linkGuida}
