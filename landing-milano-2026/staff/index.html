@@ -746,13 +746,19 @@ function disegnaConversione(dati, operatoreScelto){
     const r = mie(righe).filter(x => x.cta === cta);
     const n = c => r.reduce((t,x) => t + Number(x[c] || 0), 0);
     return { raggiunte: n('persone_raggiunte'), conversioni: n('conversioni'),
-             chiamate: n('persone_chiamate'), mute: n('persone_mute') };
+             chiamate: n('persone_chiamate'), mute: n('persone_mute'),
+             senzaRisposta: n('conversioni_senza_risposta') };
   };
   const quota = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : '—';
 
-  const cella = x => x.raggiunte
-    ? `<td><b>${x.conversioni}</b> su ${x.raggiunte} <span class="quota">· ${quota(x.conversioni, x.raggiunte)}</span></td>`
-    : '<td class="quota">nessuno raggiunto</td>';
+  /* Il denominatore sono le persone CHIAMATE, non quelle raggiunte: chi non
+     risponde riceve comunque il WhatsApp, e capita che si profili grazie a
+     quello. Contarlo solo fra i raggiunti lasciava fuori proprio le conversioni
+     piu' sorprendenti — e il numeratore finiva fuori dal suo denominatore. */
+  const cella = x => x.chiamate
+    ? `<td><b>${x.conversioni}</b> su ${x.chiamate} <span class="quota">· ${quota(x.conversioni, x.chiamate)}</span>${
+        x.senzaRisposta ? `<div class="quota">di cui ${x.senzaRisposta} senza aver risposto al telefono</div>` : ''}</td>`
+    : '<td class="quota">nessuno chiamato</td>';
 
   const p15 = perCta(dati.giorni15, 'PROFILAZIONE'), p30 = perCta(dati.giorni30, 'PROFILAZIONE');
   const f15 = perCta(dati.giorni15, 'FORUM'),        f30 = perCta(dati.giorni30, 'FORUM');
@@ -765,7 +771,7 @@ function disegnaConversione(dati, operatoreScelto){
     <summary>Conversione — una persona conta una volta, si guarda chi ha risposto</summary>
     <div class="dentro">
     <table>
-      <tr><th>Obiettivo</th><th>ultimi 15 giorni</th><th>ultimi 30 giorni</th></tr>
+      <tr><th>Obiettivo · su quante persone chiamate</th><th>ultimi 15 giorni</th><th>ultimi 30 giorni</th></tr>
       <tr><td>Profilo completato</td>${cella(p15)}${cella(p30)}</tr>
       <tr><td>Biglietto comprato</td>${cella(f15)}${cella(f30)}</tr>
       <tr class="muti"><td>Non hanno risposto</td>
@@ -773,7 +779,8 @@ function disegnaConversione(dati, operatoreScelto){
         <td><b>${m30.mute}</b> su ${m30.chiamate} <span class="quota">· ${quota(m30.mute, m30.chiamate)}</span></td></tr>
     </table>
     <p class="quota" style="margin:9px 0 0">Una conversione conta se arriva entro
-      ${dati.attribuzione_giorni || 30} giorni dalla prima telefonata a cui la persona ha risposto.</p>
+      ${dati.attribuzione_giorni || 30} giorni dalla prima telefonata, anche se a quella telefonata
+      la persona non aveva risposto: il WhatsApp parte lo stesso, e a volte è quello a convertire.</p>
     </div>`;
 }
 
