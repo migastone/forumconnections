@@ -45,7 +45,13 @@ header{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-it
        flex-wrap:wrap;position:sticky;top:0;z-index:30}
 header .marchio{font-weight:800;letter-spacing:.03em}
 header .marchio span{color:var(--gold)}
-.kpi{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;align-items:center}
+.kpi{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.kpi.nascosto{display:none}
+#apri-kpi{margin-left:auto;background:#3A3168;color:#fff;border:0;border-radius:7px;
+  padding:7px 12px;font-weight:700;font-size:.8rem;letter-spacing:.03em;cursor:pointer;white-space:nowrap}
+#apri-kpi:hover{background:#4A4180}
+#apri-kpi .freccia{display:inline-block;transition:transform .15s;margin-right:5px}
+#apri-kpi.aperto .freccia{transform:rotate(90deg)}
 .kpi div{text-align:center;min-width:62px}
 .kpi b{display:block;font-size:1.12rem;line-height:1.1}
 .kpi small{color:#B9B4D8;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
@@ -208,7 +214,8 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
     <select id="f-operatore" title="Di chi vuoi vedere la coda"></select>
     <button class="btn nascosto" style="width:auto;padding:7px 12px;background:var(--gold);color:var(--ink)"
             id="da-mandare" title="Messaggi che aspettano di essere mandati a mano"></button>
-    <div class="kpi" id="kpi"></div>
+    <button id="apri-kpi" title="Mostra o nascondi i numeri della giornata"><span class="freccia">▸</span>Numeri di oggi</button>
+    <div class="kpi nascosto" id="kpi"></div>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
   </header>
@@ -531,6 +538,19 @@ $('#entra').onclick = async () => {
 $('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
 $('#email').addEventListener('keydown', e => { if(e.key==='Enter') $('#chiedi').click(); });
 
+/* I numeri della giornata stanno chiusi: servono per fare il punto, non a ogni
+   telefonata, e aperti si mangiavano la testata. La scelta resta fra una
+   sessione e l'altra — chi li vuole sempre sott'occhio non deve riaprirli ogni
+   volta. */
+const KPI_APERTI = 'fc_kpi_aperti';
+function mostraKpi(aperti){
+  $('#kpi').classList.toggle('nascosto', !aperti);
+  $('#apri-kpi').classList.toggle('aperto', aperti);
+  try{ localStorage.setItem(KPI_APERTI, aperti ? '1' : '0'); }catch(e){}
+}
+$('#apri-kpi').onclick = () => mostraKpi($('#kpi').classList.contains('nascosto'));
+try{ if(localStorage.getItem(KPI_APERTI) === '1') mostraKpi(true); }catch(e){}
+
 controllaVersione();
 setInterval(controllaVersione, 10 * 60 * 1000);
 
@@ -642,8 +662,8 @@ function riga(r){
     </div>
     <div class="destra">
       <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b></div>
-      ${promessaMantenuta(r)
-        ? `<div class="mantenuta">✓ profilato${r.profilato_il ? ' il ' + new Date(r.profilato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : ''}</div>`
+      ${profilatoDopoLaChiamata(r)
+        ? `<div class="mantenuta">✓ si è profilato${r.profilato_il ? ' il ' + new Date(r.profilato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : ''}</div>`
         : ''}
       <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
       <div>${etichettaAssegnato(r)}</div>
@@ -923,9 +943,10 @@ async function apriScheda(id){
         <div style="margin-top:5px">${obiettivo==='profilazione'
            ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
            : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
-        ${promessaMantenuta(c) ? `<div style="margin-top:5px" class="mantenuta">✓ Ha promesso di profilarsi
-           e l'ha fatto${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}. Non c'è altro da fare adesso:
-           torna da solo${c.profilato_il ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5)
+        ${profilatoDopoLaChiamata(c) ? `<div style="margin-top:5px" class="mantenuta">✓ <b>Si è profilato
+           dopo la tua chiamata</b>${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}.${
+           c.ultimo_esito === 'Promette Profilazione' ? ' Promessa mantenuta.' : ''}
+           Il profilo non si chiede più: torna${c.profilato_il ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5)
              .toLocaleDateString('it-IT',{day:'numeric',month:'long'}) : ' fra sette giorni'} per il feedback
            sui primi match e la proposta per il Forum.</div>` : ''}
         ${c.promessa_aperta ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
@@ -1634,11 +1655,14 @@ function obiettivoPer(c){
 /* La promessa di profilarsi e' scaduta e il profilo non risulta completato.
    Il database la considera aperta finche' non si profila davvero: qui serve
    solo a dirlo in scheda con parole diverse da un generico «in ritardo». */
-/* Ha promesso di profilarsi e l'ha fatto. L'esito resta quello che l'operatrice
-   ha registrato al telefono — la promessa e' stata presa davvero, ed e' un
-   pezzo del suo lavoro — ma accanto si vede che e' stata mantenuta. */
-function promessaMantenuta(c){
-  return (c.ultimo_esito === 'Promette Profilazione') && c.promessa_aperta === false;
+/* Si è profilato dopo che l'abbiamo chiamato. Vale a prescindere da come è
+   finita la telefonata: capita che non risponda, riceva il WhatsApp e si
+   profili lo stesso — e in quel caso la scheda continuava a mostrare solo
+   «Non risponde», facendo sembrare che il sistema non se ne fosse accorto.
+   L'esito resta quello che è successo al telefono; questo si aggiunge. */
+function profilatoDopoLaChiamata(c){
+  if(!c.profilato_ora || !c.profilato_il || !c.ultima_chiamata_il) return false;
+  return new Date(c.profilato_il) >= new Date(c.ultima_chiamata_il);
 }
 
 function promessaScaduta(c){
