@@ -212,6 +212,48 @@ const CHIAVE   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const API      = URL_SUPA + '/functions/v1/ricontatti-api';
 const DEPOSITO = 'fc_ricontatti_sessione';
 
+/* ═══════════════ «questa pagina è vecchia» ═══════════════
+   Il server manda la pagina senza Cache-Control, quindi il browser decide da
+   solo per quanto tenersela — e può tenersela a lungo senza nemmeno chiedere se
+   è cambiata. Fin qui è un fastidio; quando cambiano gli esiti ammessi o il
+   testo di un messaggio diventa un'operatrice che lavora su regole vecchie e
+   riceve errori che non sa spiegarsi.
+
+   Il timbro qui sotto lo scrive il deploy. La pagina lo confronta con
+   VERSIONE.txt, che si legge scavalcando la cache: se non coincidono, la copia
+   in esecuzione è vecchia e lo si dice. Non si ricarica da sole — se c'è una
+   chiamata aperta, ricaricare a tradimento butta via le note appena scritte. */
+const VERSIONE_PAGINA = '__COMMIT__';
+
+let avvisoVersioneMostrato = false;
+
+async function versionePubblicata(){
+  const r = await fetch('../VERSIONE.txt?t=' + Date.now(), { cache: 'no-store' });
+  if(!r.ok) throw new Error('VERSIONE.txt non leggibile');
+  const m = (await r.text()).match(/commit:\s*([0-9a-f]{7,40})/i);
+  return m ? m[1] : null;
+}
+
+async function controllaVersione(){
+  /* In locale il timbro non è stato sostituito: non c'è niente da confrontare. */
+  if(VERSIONE_PAGINA.indexOf('COMMIT') !== -1 || avvisoVersioneMostrato) return;
+  let viva;
+  try{ viva = await versionePubblicata(); }catch(e){ return; }
+  if(!viva || viva === VERSIONE_PAGINA) return;
+
+  avvisoVersioneMostrato = true;
+  const barra = document.createElement('div');
+  barra.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:var(--navy);'
+    + 'color:#fff;padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:center;'
+    + 'flex-wrap:wrap;font-size:.9rem;box-shadow:0 -2px 12px rgba(0,0,0,.25)';
+  barra.innerHTML = '<span>Questa pagina è una copia vecchia: ne è stata pubblicata una nuova.</span>'
+    + '<button class="btn oro" style="width:auto;padding:8px 16px" data-ricarica>Ricarica adesso</button>'
+    + '<button class="btn" style="width:auto;padding:8px 16px;background:#3A3168" data-dopo>Dopo</button>';
+  document.body.appendChild(barra);
+  barra.querySelector('[data-ricarica]').onclick = () => location.reload();
+  barra.querySelector('[data-dopo]').onclick = () => barra.remove();
+}
+
 /* «Da NON chiamare» teneva insieme due cose diverse, e vanno trattate diverse:
    «Non interessato» è un lead chiuso e si archivia, «Richiede disiscrizione» è
    una richiesta di cancellazione e toglie la persona dalla lista per sempre. */
@@ -370,6 +412,9 @@ $('#entra').onclick = async () => {
 };
 $('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
 $('#email').addEventListener('keydown', e => { if(e.key==='Enter') $('#chiedi').click(); });
+
+controllaVersione();
+setInterval(controllaVersione, 10 * 60 * 1000);
 
 async function entra(){
   try{

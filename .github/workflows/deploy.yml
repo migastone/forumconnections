@@ -66,6 +66,22 @@ jobs:
             > landing-milano-2026/VERSIONE.txt
           cat landing-milano-2026/VERSIONE.txt
 
+      - name: Timbra le pagine con il commit
+        # Ogni pagina si porta dentro il commit da cui e' stata generata, cosi'
+        # puo' confrontarlo con VERSIONE.txt e accorgersi da sola di essere una
+        # copia vecchia rimasta nella cache del browser. Senza questo timbro la
+        # pagina non ha modo di sapere quale versione sta eseguendo.
+        run: |
+          trovate=$(grep -rl '__COMMIT__' landing-milano-2026 --include='*.html' || true)
+          if [ -z "$trovate" ]; then
+            echo "Nessuna pagina da timbrare."
+          else
+            echo "$trovate" | while read -r f; do
+              sed -i "s/__COMMIT__/${{ github.sha }}/g" "$f"
+              echo "timbrata: $f"
+            done
+          fi
+
       - name: Carica via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
