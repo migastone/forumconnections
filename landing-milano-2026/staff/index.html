@@ -270,19 +270,21 @@ async function controllaVersione(){
 /* «Da NON chiamare» teneva insieme due cose diverse, e vanno trattate diverse:
    «Non interessato» è un lead chiuso e si archivia, «Richiede disiscrizione» è
    una richiesta di cancellazione e toglie la persona dalla lista per sempre. */
-const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Richiamata','Ricontatto',
+const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Da Ricontattare',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
                'Non interessato','Richiede disiscrizione','Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
 /* esiti in cui la chiamata ha davvero ricevuto risposta: la nota diventa obbligatoria */
-const CONNESSI = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
-                          'Profilato - Call back','Non può venire','Acquistato',
-                          'Non interessato','Richiede disiscrizione','Altro operatore','Altro']);
+/* Se la chiamata ha avuto risposta non si deduce piu' dall'esito: lo dice
+   l'operatrice con la spunta in scheda. «Da Ricontattare» capita in tutti e due
+   i casi — non ha risposto e si riprova, oppure ha risposto e vi siete dati un
+   appuntamento — ed e' proprio la differenza che il vecchio nome nascondeva. */
+const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde']);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
-const ANDATA_BENE = new Set(['Ci pensa','Viene','Ricontatto','Promette Profilazione',
+const ANDATA_BENE = new Set(['Ci pensa','Viene','Promette Profilazione',
                              'Profilato - Call back']);
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
@@ -704,6 +706,10 @@ async function apriScheda(id){
   try{ d = await api('/contatto/' + id); }
   catch(e){ return alert(e.message); }
   const c = d.contatto, storico = d.chiamate || [];
+  /* «Da Ricontattare» copre due situazioni: non ha risposto e si riprova,
+     oppure ha risposto e vi siete dati un appuntamento. A distinguerle e' se
+     l'ultima chiamata ha avuto risposta, che e' scritto nello storico. */
+  c.ultima_connessa = storico.length ? storico[0].connessa : null;
   const msg = componiMessaggio(c);
   const obiettivo = obiettivoPer(c);
   /* la capacità si rilegge all'apertura della scheda: fra una chiamata e
@@ -798,6 +804,10 @@ async function apriScheda(id){
             ${obiettivo==='profilazione'?'<div class="serve">È questa che devi portare a casa</div>':''}
           </div>
         </div>
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 12px">
+          <input type="checkbox" data-risposto checked style="width:17px;height:17px;margin:0">
+          <span>Ha risposto al telefono</span>
+        </label>
         <label>Note sulla chiamata</label>
         <textarea data-note placeholder="Com'è andata: cosa ha detto, cosa serve ricordare la prossima volta…"></textarea>
         <p class="contatore" data-contatore>0 caratteri</p>
@@ -904,13 +914,21 @@ async function apriScheda(id){
   /* la nota diventa obbligatoria solo se la chiamata ha ricevuto risposta */
   const aggiornaContatore = () => {
     const n = q('[data-note]').value.trim().length;
-    const serve = CONNESSI.has(q('[data-esito]').value);
+    const serve = q('[data-risposto]').checked;
     const el = q('[data-contatore]');
     el.textContent = serve ? `${n} caratteri — minimo 20 perché la chiamata ha avuto risposta` : `${n} caratteri`;
     el.classList.toggle('corto', serve && n < 20);
   };
   q('[data-note]').oninput = aggiornaContatore;
-  q('[data-esito]').onchange = () => { aggiornaContatore(); aggiornaEtichetteMessaggi(); };
+  q('[data-esito]').onchange = () => {
+    /* «Non risponde» e la spunta non possono convivere: si toglie da sola e si
+       blocca, cosi' non resta a segnare una risposta che non c'e' stata. */
+    const senzaRisposta = SENZA_RISPOSTA.has(q('[data-esito]').value);
+    if(senzaRisposta) q('[data-risposto]').checked = false;
+    q('[data-risposto]').disabled = senzaRisposta;
+    aggiornaContatore(); aggiornaEtichetteMessaggi();
+  };
+  q('[data-risposto]').onchange = () => { aggiornaContatore(); aggiornaEtichetteMessaggi(); };
 
   /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
   if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
@@ -918,11 +936,11 @@ async function apriScheda(id){
 
   q('[data-salva]').onclick = async () => {
     const esito = q('[data-esito]').value, note = q('[data-note]').value.trim();
-    if(CONNESSI.has(esito) && note.length < 20)
+    if(q('[data-risposto]').checked && note.length < 20)
       return avviso('[data-avviso-scheda]','Con questo esito la nota è obbligatoria: servono almeno 20 caratteri.');
     /* «Ricontatto» e «Profilato - Call back» sono impegni con una data: senza,
        il contatto sparirebbe in fondo alla coda invece di tornare quando serve. */
-    if((esito === 'Ricontatto' || esito === 'Profilato - Call back') && !q('[data-ricontatto]').value)
+    if((esito === 'Da Ricontattare' || esito === 'Profilato - Call back') && !q('[data-ricontatto]').value)
       return avviso('[data-avviso-scheda]','Con questo esito serve la data di ricontatto: è l\'impegno che hai preso al telefono.');
     /* «Promette Profilazione» è la stessa cosa, ma la data che conta è l'altra:
        è quella che hai fatto dire a lui, ed è quella che finisce nel messaggio
@@ -960,6 +978,9 @@ async function apriScheda(id){
       esito, note: note || null,
       obiezione: q('[data-obiezione]').value || null,
       durata_secondi: secondiChiamata(),
+      /* Dichiarata, non dedotta: e' il numero su cui si misurano il tasso di
+         risposta e la durata media. */
+      connessa: q('[data-risposto]').checked,
       ricontatto_il: q('[data-ricontatto]').value ? new Date(q('[data-ricontatto]').value).toISOString() : null,
       profilazione_promessa_il: q('[data-profilazione]').value || null
     };
@@ -1007,14 +1028,17 @@ async function apriScheda(id){
   /* ---- il tentativo a vuoto, in un colpo solo ----
      Apre e chiude la chiamata senza passare dal modulo: nessuna nota da
      scrivere, perché la chiamata non ha ricevuto risposta. `connessa: false`
-     va detto esplicitamente, altrimenti il database considera «Richiamata»
+     va detto esplicitamente, altrimenti il database considera «Da Ricontattare»
      una chiamata connessa e pretende venti caratteri di nota.
      Il messaggio si compone PRIMA di registrare: dopo, lo stato è cambiato
      e verrebbe fuori il messaggio del giro successivo.                      */
   if(q('[data-nonrisponde]')) q('[data-nonrisponde]').onclick = async () => {
     const bottone = q('[data-nonrisponde]');
-    const secondo = (c.ultimo_esito || 'Da Contattare') === 'Richiamata';
-    const m = componiMessaggio(c);
+    /* Secondo buco: l'ultima volta gia' non aveva risposto ed era in attesa di
+       richiamo. Non basta lo stato, perche' «Da Ricontattare» capita anche a chi
+       ha risposto e ha fissato un appuntamento. */
+    const secondo = (c.ultimo_esito || '') === 'Da Ricontattare' && c.ultima_connessa === false;
+    const m = componiMessaggio(c, undefined, { tentativoAVuoto: secondo ? 2 : 1 });
     const quando = secondo ? null : prossimoGiornoLavorativo();
     /* La domanda prima di tutto: segnare «non risponde» a chi non ha ancora
        ricevuto niente lo toglie dalla coda di oggi senza che gli sia arrivato
@@ -1023,7 +1047,7 @@ async function apriScheda(id){
     const chi = (c.nome || '').trim() || 'questo contatto';
     const conseguenza = secondo
       ? 'il contatto si chiude con «Non risponde»'
-      : `il contatto passa in «Richiamata» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`;
+      : `il contatto passa in «Da Ricontattare» per ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`;
     if(!confirm(`Hai gia' mandato il WhatsApp e l'email a ${chi}?\n\n`
       + `OK — si': ${conseguenza}.\n`
       + `Annulla — no: non segno niente, cosi' li mandi adesso.`)) return;
@@ -1037,7 +1061,7 @@ async function apriScheda(id){
         id = r.chiamata.id;
       }
       await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify({
-        esito: secondo ? 'Non risponde' : 'Richiamata',
+        esito: secondo ? 'Non risponde' : 'Da Ricontattare',
         connessa: false,
         durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : 0,
         ricontatto_il: quando ? quando.toISOString() : null
@@ -1099,7 +1123,8 @@ async function apriScheda(id){
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
    al secondo si chiude. */
 function etichettaNonRisponde(c){
-  if((c.ultimo_esito || 'Da Contattare') === 'Richiamata') return 'Non risponde · chiudi';
+  if((c.ultimo_esito || '') === 'Da Ricontattare' && c.ultima_connessa === false)
+    return 'Non risponde · chiudi';
   const g = prossimoGiornoLavorativo();
   return 'Non risponde · richiamo ' + g.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
 }
@@ -1120,7 +1145,7 @@ function marchioPer(c){
 /* ═══════════════ flusso richiamata e testi ═══════════════
    Due tentativi a vuoto, due messaggi diversi.
 
-   1º tentativo a vuoto → si manda il WA n.1 e il contatto passa in «Richiamata»
+   1º tentativo a vuoto → si manda il WA n.1 e il contatto passa in «Da Ricontattare»
       con ricontatto_il al primo giorno lavorativo successivo: il giorno dopo si
       ritrova in cima alla coda, perché la vista ordina per urgenza.
    2º tentativo a vuoto → il contatto si chiude con «Non risponde» e parte il
@@ -1270,7 +1295,7 @@ function dataImpegno(c, esito){
      l'altra data. Senza questo, dopo un «Ricontatto» su un contatto da
      profilare non c'era nessuna data da mettere nel messaggio, e l'invio
      restava bloccato. */
-  if((esito || c.ultimo_esito) === 'Ricontatto' && c.ricontatto_il){
+  if((esito || c.ultimo_esito) === 'Da Ricontattare' && c.ricontatto_il){
     const d = new Date(c.ricontatto_il);
     return d.toLocaleDateString('it-IT',{weekday:'long', day:'numeric', month:'long'})
          + ' alle ' + d.toLocaleTimeString('it-IT',{hour:'2-digit', minute:'2-digit'});
@@ -1491,15 +1516,24 @@ function componiMessaggio(c, operatore, opzioni){
   let quale, tentativo = 0, tipo;
   /* chi ha gia' pagato viene prima di tutto: a lui non si vende piu' niente,
      gli si dice benvenuto e cosa fare adesso. */
-  if(c.acquirente){ quale = 'benvenuto_acquisto'; tipo = 'benvenuto'; }
+  /* I due tentativi a vuoto li dichiara chi chiama il pulsante rapido: dedurli
+     dallo stato non funziona piu' da quando «Da Ricontattare» copre anche chi
+     ha risposto. */
+  if(o.tentativoAVuoto === 2){ quale = varianteSecondoBuco(c); tipo = 'economy'; tentativo = 2; }
+  else if(o.tentativoAVuoto === 1){ quale = 'primo'; tipo = 'promemoria'; tentativo = 1; }
+  else if(c.acquirente){ quale = 'benvenuto_acquisto'; tipo = 'benvenuto'; }
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
      lungo, quello che mette per iscritto evento, offerta e scadenza. */
   else if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
   /* «Ricontatto» sta dentro ANDATA_BENE perché la telefonata ha avuto risposta,
      ma non è un impegno preso: va prima, o si prenderebbe il recap sbagliato. */
-  else if(esito === 'Ricontatto'){  quale = 'appuntamento';           tipo = 'economy'; }
+  /* «Da Ricontattare» dopo una risposta e' un appuntamento preso; senza
+     risposta e' un contatto in attesa del secondo tentativo. */
+  else if(esito === 'Da Ricontattare' && (o.esito || c.ultima_connessa !== false)){
+                                    quale = 'appuntamento';           tipo = 'economy'; }
+  else if(esito === 'Da Ricontattare'){
+                                    quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
-  else if(esito === 'Richiamata'){  quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
 
   const pacchetto = o.pacchetto === 'azienda' ? 'azienda' : 'base';
