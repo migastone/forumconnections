@@ -156,6 +156,11 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .fatta{margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#E2F1E8;
   border:1px solid #B5DCC5;color:#1B5137;font-size:.93rem;line-height:1.4}
 .fatta b{color:#14402A}
+.a-meta{margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#FFFBF2;
+  border:1px solid #E8C98F;color:#7A5C12;font-size:.93rem;line-height:1.4}
+.a-meta b{color:#5C4409}
+.evento-meta{border-top:1px solid var(--bordo);padding:8px 0;font-size:.86rem;
+  color:#8A6A17;font-weight:700}
 .evento-prof{border-top:1px solid var(--bordo);padding:8px 0;font-size:.86rem;
   color:#22603F;font-weight:700}
 .sosia{margin:12px 0 0;padding:12px 14px;border:1px solid #E8C98F;border-radius:10px;background:#FFFBF2}
@@ -650,7 +655,8 @@ function riga(r){
       <div class="chi-nome">${esc([r.nome,r.cognome].filter(Boolean).join(' ')) || '(senza nome)'}
         <span class="atti">${atti}</span>
         ${r.crm_consulente ? `<span class="pill crm">CRM · ${esc(r.crm_consulente)}</span>` : ''}
-        ${(r.profilato_ora ?? r.profilato) ? '<span class="pill">profilato</span>' : ''}
+        ${profiloCompleto(r) ? '<span class="pill si">profilato</span>' : ''}
+        ${profiloAMeta(r) ? '<span class="pill no" title="Ha aperto la profilazione senza finirla">profilo a metà</span>' : ''}
         <span class="pill ${obiettivoPer(r)==='profilazione'?'cta-prof':'cta-forum'}">${obiettivoPer(r)==='profilazione'?'profilazione':'Forum'}</span>
         ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}
         ${sosiaNoti.has(r.id) ? `<span class="pill no" title="Su MigaMATCH c'è un'anagrafica con lo stesso nome ma un'altra email">⚠ forse già iscritto${
@@ -956,11 +962,16 @@ async function apriScheda(id){
            <b>Il profilo non si chiede più.</b> Torna${c.profilato_il
              ? ' il ' + new Date(new Date(c.profilato_il).getTime() + 7*864e5).toLocaleDateString('it-IT',{day:'numeric',month:'long'})
              : ' fra sette giorni'} per il feedback sui primi match e la proposta per il Forum.</div>` : ''}
+        ${(!profilatoDopoLaChiamata(c) && profiloCompleto(c)) ? `<div class="fatta">✓ <b>Profilo già completo</b>${
+           c.profilato_il ? ', dal ' + new Date(c.profilato_il).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : ''}.
+           Con lui si parla del <b>biglietto</b>, non della profilazione.</div>` : ''}
+        ${profiloAMeta(c) ? `<div class="a-meta">⚠ <b>Ha aperto la profilazione e non l'ha completata</b>${
+           c.profilato_il ? ', l\'ultima volta il ' + new Date(c.profilato_il).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : ''}.
+           È un aggancio: aveva cominciato e si è fermato, gli mancano dieci minuti.</div>` : ''}
         ${tratti.length ? `<div class="tratti">${tratti.map(esc).join(' · ')}</div>` : ''}
         <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
              ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
              ${c.atto1?' · 🖥️ Atto 1':''}${c.atto2?' · 🤝 Atto 2':''}
-             ${(c.profilato_ora ?? c.profilato)?' · profilato su MigaMATCH':''}
              <span class="pill ${obiettivo==='profilazione'?'cta-prof':'cta-forum'}">${obiettivo==='profilazione'?'CTA: profilazione':'CTA: Forum'}</span>
              ${c.pronto_per_forum?'<span class="pill maturo">pronto per il Forum</span>':''}</div>
         <div style="margin-top:5px">${obiettivo==='profilazione'
@@ -1080,12 +1091,17 @@ async function apriScheda(id){
            suo. Senza, uno storico di soli «Non risponde» racconta un fallimento
            dove invece c'è stata una conversione. */
         const eventi = storico.map(s => ({ quando: s.iniziata_il, chiamata: s }));
-        if(c.profilato_il) eventi.push({ quando: c.profilato_il, profilazione: true });
+        /* La data c'e' anche su chi non ha finito: senza questo controllo la
+           linea del tempo dichiarava completato un profilo che non lo era. */
+        if(c.profilato_il) eventi.push({ quando: c.profilato_il,
+                                         profilazione: profiloCompleto(c) ? 'fatta' : 'a-meta' });
         if(!eventi.length) return '';
         eventi.sort((a,b) => new Date(b.quando) - new Date(a.quando));
         return `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>`
-        + eventi.map(e => e.profilazione
+        + eventi.map(e => e.profilazione === 'fatta'
           ? `<div class="evento-prof">✓ Ha completato il profilo su MigaMATCH · ${dataOra(e.quando)}</div>`
+          : e.profilazione === 'a-meta'
+          ? `<div class="evento-meta">⚠ Ha aperto la profilazione e non l'ha completata · ${dataOra(e.quando)}</div>`
           : `<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
               <b>${esc(e.chiamata.esito||'—')}</b> · ${dataOra(e.chiamata.iniziata_il)} · ${esc(e.chiamata.operatore||'')}
               ${durataChiamata(e.chiamata.durata_secondi)
@@ -1690,6 +1706,16 @@ function obiettivoPer(c){
    profili lo stesso — e in quel caso la scheda continuava a mostrare solo
    «Non risponde», facendo sembrare che il sistema non se ne fosse accorto.
    L'esito resta quello che è successo al telefono; questo si aggiunge. */
+/* Il profilo e' completo davvero. `profilato_il` da solo non lo dice: e' la
+   data in cui l'onboarding e' stato toccato l'ultima volta, e resta valorizzata
+   anche su chi l'ha aperto e mollato a meta'. Salvatore Di Natale risultava
+   «ha completato il profilo il 14 luglio» senza averlo mai finito. */
+const profiloCompleto = c => !!c.profilato_ora;
+
+/* L'ha aperto e non l'ha finito. Non e' una brutta notizia: e' un aggancio —
+   «a luglio avevi cominciato e ti sei fermato, ti mancano cinque minuti». */
+const profiloAMeta = c => !c.profilato_ora && !!c.profilato_il;
+
 function profilatoDopoLaChiamata(c){
   if(!c.profilato_ora || !c.profilato_il || !c.ultima_chiamata_il) return false;
   return new Date(c.profilato_il) >= new Date(c.ultima_chiamata_il);
