@@ -307,7 +307,7 @@ async function controllaVersione(){
 /* «Da NON chiamare» teneva insieme due cose diverse, e vanno trattate diverse:
    «Non interessato» è un lead chiuso e si archivia, «Richiede disiscrizione» è
    una richiesta di cancellazione e toglie la persona dalla lista per sempre. */
-const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Da Ricontattare',
+const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non raggiungibile','Da Ricontattare',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
                'Non interessato','Richiede disiscrizione','Altro operatore','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
@@ -320,7 +320,7 @@ const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','d
    «Da Ricontattare» sta qui fuori perche' dal modulo lo si sceglie dopo aver
    parlato; quando invece non risponde, ci si arriva dal pulsante rapido, che
    dichiara lui che non c'e' stata risposta. */
-const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Altro operatore']);
+const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Non raggiungibile','Altro operatore']);
 const haRisposto = esito => !SENZA_RISPOSTA.has(esito);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
@@ -343,6 +343,7 @@ const ESITI_FUORI_CONTESTO = {
 const CAMPI_ESITO = {
   'Ci pensa':              { ricontatto:'obbligatoria', profilazione:'no' },
   'Non risponde':          { ricontatto:'obbligatoria', profilazione:'no' },
+  'Non raggiungibile':     { ricontatto:'no',           profilazione:'no' },
   'Da Ricontattare':       { ricontatto:'obbligatoria', profilazione:'no' },
   'Profilato - Call back': { ricontatto:'obbligatoria', profilazione:'no' },
   'Promette Profilazione': { ricontatto:'no', profilazione:'obbligatoria' },
@@ -359,7 +360,8 @@ const CAMPI_DEFAULT = { ricontatto:'no', profilazione:'no' };
    la questione prima che si ripeta. */
 const SPIEGA_ESITO = {
   'Da Ricontattare':       'Avete parlato e vi siete dati un appuntamento. Se invece il telefono ha squillato a vuoto, chiudi qui e usa il pulsante «Non risponde».',
-  'Non risponde':          'Il telefono ha squillato a vuoto. Metti qui sotto quando riprovare — al secondo buco parte il messaggio n.2.',
+  'Non risponde':          'Primo squillo a vuoto: si riprova il giorno dopo, alla data qui sotto.',
+  'Non raggiungibile':     'Secondo squillo a vuoto: il contatto si archivia e non torna in lista.',
   'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Si risente alla data qui sotto, senza impegni scritti.',
   'Promette Profilazione': 'Ha promesso di completare il profilo entro la data qui sotto. È quella a farlo tornare in cima.',
   'Profilato - Call back': 'Si è profilato dopo una nostra chiamata: si richiama per il feedback sui primi match.',
@@ -376,7 +378,7 @@ const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
-                           'Non può venire','Altro operatore']);
+                           'Non raggiungibile','Non può venire','Altro operatore']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 /* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
@@ -856,9 +858,17 @@ function disegnaKpi(){
 
     /* Con «tutti» il traguardo è quello della squadra: il target di uno solo
        confrontato con la somma di tutti sarebbe un numero senza significato. */
-    const quantiOperatori = Math.max(1,
-      ((io && io.operatori) || []).filter(o => o.ruolo === 'operatore').length);
-    const meta = scelto === 'tutti' ? targetGiornaliero * quantiOperatori : targetGiornaliero;
+    /* Ogni operatrice ha il suo traguardo: quello nelle impostazioni resta come
+       valore di riferimento per chi non ne ha uno. Con «tutti» il traguardo
+       della squadra e' la somma dei singoli, non una moltiplicazione. */
+    const squadra = ((io && io.operatori) || []).filter(o => o.ruolo === 'operatore');
+    const targetDi = id => {
+      const o = squadra.find(x => x.id === id);
+      return Number(o && o.target_giornaliero) || targetGiornaliero;
+    };
+    const meta = scelto === 'tutti'
+      ? Math.max(1, squadra.reduce((t, o) => t + (Number(o.target_giornaliero) || targetGiornaliero), 0))
+      : targetDi(scelto);
     const nome = scelto === 'tutti' ? 'la squadra'
       : (((io && io.operatori) || []).find(o => o.id === scelto) || {}).nome;
     const eMia = !!(io && scelto === io.operatore_id);
@@ -912,7 +922,8 @@ async function apriScheda(id){
   /* Quante volte il telefono ha gia' squillato a vuoto. Serve a sapere se
      questo e' il primo o il secondo tentativo, ora che entrambi si registrano
      con lo stesso esito: prima la differenza la portava il nome dello stato. */
-  c.tentativi_a_vuoto = storico.filter(x => x.esito === 'Non risponde').length;
+  c.tentativi_a_vuoto = storico.filter(x =>
+    x.esito === 'Non risponde' || x.esito === 'Non raggiungibile').length;
   const msg = componiMessaggio(c);
   const obiettivo = obiettivoPer(c);
   /* la capacità si rilegge all'apertura della scheda: fra una chiamata e
@@ -1389,6 +1400,8 @@ async function apriScheda(id){
     /* Secondo buco: l'ultima volta gia' non aveva risposto ed era in attesa di
        richiamo. Non basta lo stato, perche' «Da Ricontattare» capita anche a chi
        ha risposto e ha fissato un appuntamento. */
+    /* Un buco gia' registrato vuol dire che questo e' il secondo giorno: dopo
+       questo il contatto si archivia. */
     const secondo = (c.tentativi_a_vuoto || 0) >= 1;
     const m = componiMessaggio(c, undefined, { tentativoAVuoto: secondo ? 2 : 1 });
     const quando = secondo ? null : prossimoGiornoLavorativo();
@@ -1398,7 +1411,7 @@ async function apriScheda(id){
        pulsanti per mandarli sono li' accanto. */
     const chi = (c.nome || '').trim() || 'questo contatto';
     const conseguenza = secondo
-      ? 'si segna «Non risponde», secondo tentativo a vuoto, e parte il messaggio n.2'
+      ? 'secondo giorno a vuoto: parte l\'ultimo messaggio e il contatto si archivia — non torna piu\' in lista'
       : `si segna «Non risponde» e si richiama ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`;
     if(!confirm(`Hai gia' mandato il WhatsApp e l'email a ${chi}?\n\n`
       + `OK — si': ${conseguenza}.\n`
@@ -1413,10 +1426,9 @@ async function apriScheda(id){
         id = r.chiamata.id;
       }
       await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify({
-        /* Il telefono ha squillato a vuoto: l'esito e' quello, sia la prima
-           volta sia la seconda. A distinguerle e' la data del richiamo, non un
-           nome di stato diverso. */
-        esito: 'Non risponde',
+        /* Primo buco: si riprova il giorno dopo. Secondo: si archivia, e serve
+           un esito diverso perche' e' l'esito a dire se un contatto e' chiuso. */
+        esito: secondo ? 'Non raggiungibile' : 'Non risponde',
         connessa: false,
         durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : 0,
         ricontatto_il: quando ? quando.toISOString() : null
@@ -1513,7 +1525,7 @@ async function apriScheda(id){
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
    al secondo si chiude. */
 function etichettaNonRisponde(c){
-  if((c.tentativi_a_vuoto || 0) >= 1) return 'Non risponde · secondo tentativo';
+  if((c.tentativi_a_vuoto || 0) >= 1) return 'Non risponde · archivia';
   const g = prossimoGiornoLavorativo();
   return 'Non risponde · richiamo ' + g.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
 }
@@ -1761,6 +1773,11 @@ function edizioneForum(c){
   return null;
 }
 
+/* IN PENSIONE dal 24 agosto 2026. Sceglieva fra le tre varianti contestuali del
+   secondo tentativo a vuoto (4a, 4b, 4c). Il secondo giorno adesso manda un
+   messaggio solo, che chiude e offre la cancellazione. Le tre varianti restano
+   scritte qui sotto: se un giorno si volesse tornare a differenziarle per
+   provenienza, basta rimettere questa funzione nella scelta del messaggio. */
 function varianteSecondoBuco(c){
   if(obiettivoPer(c) === 'profilazione') return 'quattro_a';
   return edizioneForum(c) ? 'quattro_b' : 'quattro_c';
@@ -1833,6 +1850,8 @@ Ti riassumo qui, così resta scritto: come da accordi mi hai confermato che rius
 
 Qui c'è il link, sono dieci minuti dal telefono: ${p.linkProfilo}
 
+E il regalo di cui ti parlavo: la copia di Economy di agosto, a pagina 22 ci siamo noi. https://mssl.it/economy
+
 P.S. Il 17 ottobre a Milano abbiamo il Forum Connections, la giornata dal vivo. Non è per adesso: ne riparliamo dopo che hai fatto il primo match.
 
 A presto!`,
@@ -1881,6 +1900,17 @@ Intanto ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pa
 
 Se nel frattempo ti viene un dubbio, scrivimi pure qui.`,
 
+  /* Secondo giorno a vuoto, e ultimo tentativo. Dice quello che c'era da dire
+     e chiude offrendo l'uscita: se non vuole essere disturbato basta che lo
+     scriva. Meglio una cancellazione chiesta da lui che un numero che ci
+     ignora per settimane. */
+  secondo_giorno: p =>
+`Ciao ${p.nome}, sono ${p.op} di ${p.brand}, avevo un bel contatto da darti per accelerare la tua attività senza nulla in cambio, ma anche oggi non ti ho trovato.
+
+Scrivimi se preferisci che ti cancelliamo dai nostri archivi, così non ti disturbiamo più.
+
+A presto, ${p.op}`,
+
   solo_economy: p =>
 `Ciao ${p.nome}, come promesso al telefono ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pagina 22 ci trovi noi.
 
@@ -1915,6 +1945,7 @@ const OGGETTI = {
   bene_forum: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
+  secondo_giorno: n => `${n}, ho provato a cercarti anche oggi`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
   benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
@@ -1947,7 +1978,7 @@ function componiMessaggio(c, operatore, opzioni){
   /* I due tentativi a vuoto li dichiara chi chiama il pulsante rapido: dedurli
      dallo stato non funziona piu' da quando «Da Ricontattare» copre anche chi
      ha risposto. */
-  if(o.tentativoAVuoto === 2){ quale = varianteSecondoBuco(c); tipo = 'economy'; tentativo = 2; }
+  if(o.tentativoAVuoto === 2){ quale = 'secondo_giorno'; tipo = 'promemoria'; tentativo = 2; }
   else if(o.tentativoAVuoto === 1){ quale = 'primo'; tipo = 'promemoria'; tentativo = 1; }
   else if(c.acquirente){ quale = 'benvenuto_acquisto'; tipo = 'benvenuto'; }
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
@@ -1962,8 +1993,11 @@ function componiMessaggio(c, operatore, opzioni){
        «non ha risposto» ci si arriva dal pulsante rapido, che passa di qui con
        tentativoAVuoto e non da questo ramo. */
                                     quale = 'appuntamento';           tipo = 'economy'; }
+  /* «Da Ricontattare» senza risposta: e' la vecchia forma del primo buco, prima
+     che il pulsante rapido cominciasse a scrivere «Non risponde». Resta per le
+     righe gia' registrate cosi'. */
   else if(esito === 'Da Ricontattare'){
-                                    quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
+                                    quale = 'secondo_giorno';         tipo = 'promemoria'; tentativo = 2; }
   else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
   /* «Ci pensa» non è un impegno: mandargli il recap di una promessa che non ha
      fatto è il modo migliore per irrigidirlo alla telefonata dopo. */
@@ -1971,8 +2005,8 @@ function componiMessaggio(c, operatore, opzioni){
   /* Segnato a mano «Non risponde»: quale dei due messaggi tocca dipende da
      quante volte il telefono ha gia' squillato a vuoto, non dall'esito — che
      ormai e' lo stesso per il primo e per il secondo tentativo. */
-  else if(esito === 'Non risponde' && (c.tentativi_a_vuoto || 0) >= 1){
-                                    quale = varianteSecondoBuco(c);   tipo = 'economy';    tentativo = 2; }
+  else if(esito === 'Non raggiungibile' || (esito === 'Non risponde' && (c.tentativi_a_vuoto || 0) >= 1)){
+                                    quale = 'secondo_giorno';         tipo = 'promemoria'; tentativo = 2; }
   else if(esito === 'Non risponde'){ quale = 'primo';                 tipo = 'promemoria'; tentativo = 1; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
   else {                            quale = 'primo';                  tipo = 'promemoria'; tentativo = 1; }
@@ -2004,6 +2038,7 @@ function componiMessaggio(c, operatore, opzioni){
     bene_forum: 'recap dopo la chiamata · Forum',
     appuntamento: 'chiamata a metà · appuntamento preso',
     ci_pensa: 'ci sta pensando · si risente',
+    secondo_giorno: 'secondo giorno a vuoto · ultimo messaggio',
     solo_economy: 'ha detto di no · Economy lo stesso',
     email_promesso: 'ha detto di venire e non ha ancora comprato',
     benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
@@ -2044,6 +2079,7 @@ const COSA_PARTE = {
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
   ci_pensa:           'ci risentiamo, con Economy',
+  secondo_giorno:     'ultimo tentativo',
   solo_economy:       'solo Economy',
   email_promesso:     'riassunto e offerta'
 };
