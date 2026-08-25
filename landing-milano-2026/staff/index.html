@@ -2226,7 +2226,12 @@ function perchePuoMancare(m){
     q.push('manca il prezzo di listino per oggi: il listino è confermato solo fino al 31 agosto, chiedi a Oscar prima di mandare');
   if(m.mancano.includes('edizione'))
     q.push('non risulta a quale Forum abbia partecipato: controlla le fonti del contatto');
-  return q.join(' · ');
+  if(m.mancano.includes('il numero da cui richiami'))
+    q.push('nella tua scheda operatore non c\'è un numero di telefono, e l\'SMS deve dire da dove '
+      + 'arriverà la chiamata: senza, è un messaggio a cui non si può nemmeno rispondere');
+  /* Se il motivo non lo sappiamo dire, almeno non si finge di saperlo: un
+     pulsante spento senza spiegazione manda a cercare il guasto altrove. */
+  return q.length ? q.join(' · ') : 'il messaggio non è completo (' + m.mancano.join(', ') + ')';
 }
 
 /* Etichetta del pulsante: dice quale messaggio sta per uscire. */
@@ -2405,8 +2410,17 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
   q('[data-invia]').onclick = async () => {
     const testo = testoScelto();
     if(!testo) return;
+    /* L'SMS costa e non si annulla. Una conferma con il numero sotto gli occhi
+       è l'ultimo posto in cui ci si accorge di stare mandando alla persona
+       sbagliata. Il server ha comunque il suo antidoppione, ma così non ci si
+       prova nemmeno. */
+    if(canale === 'sms' && !confirm(
+        `Mando l'SMS a ${destinatario}?\n\n`
+      + `${testo.length} caratteri${testo.length > 160 ? ' — sono 2 SMS' : ''}.\n`
+      + `Arriva da «MigaMATCH» e non si può rispondere: il numero per richiamarti è nel testo.\n\n`
+      + `Gli SMS si pagano e non si annullano.`)) return;
     q('[data-invia]').disabled = true;
-    avviso('[data-esito-invio]', 'Invio in corso…', 'ok');
+    avviso('[data-esito-invio]', canale === 'sms' ? 'Mando l\'SMS…' : 'Invio in corso…', 'ok');
     try{
       const invio = { contatto_id: c.id, tipo: corrente.tipo, canale, testo,
                       chiamata_id: chiamataId ?? null };
