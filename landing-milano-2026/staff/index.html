@@ -2041,7 +2041,9 @@ Se nel frattempo ti viene un dubbio, scrivimi pure qui.`,
   secondo_giorno: p =>
 `Ciao ${p.nome}, sono ${p.op} di ${p.brand}, avevo un bel contatto da darti per accelerare la tua attività senza nulla in cambio, ma anche oggi non ti ho trovato.
 
-Scrivimi se preferisci che ti cancelliamo dai nostri archivi, così non ti disturbiamo più.
+Se trovare clienti giusti è un problema anche per te, dimmi quando posso chiamarti e ti spiego come funziona.
+
+Altrimenti dimmelo e ti cancelliamo dai nostri archivi, così non ti disturbiamo più.
 
 A presto, ${p.op}`,
 
@@ -2151,7 +2153,11 @@ function componiMessaggio(c, operatore, opzioni){
   /* Segnato a mano «Non risponde»: quale dei due messaggi tocca dipende da
      quante volte il telefono ha gia' squillato a vuoto, non dall'esito — che
      ormai e' lo stesso per il primo e per il secondo tentativo. */
-  else if(esito === 'Non raggiungibile' || (esito === 'Non risponde' && (c.tentativi_a_vuoto || 0) >= 1)){
+  /* Sfasato di uno: dopo il PRIMO buco il contatto ha gia' un tentativo a
+     vuoto registrato, e con la soglia a uno la scheda offriva subito l'ultimo
+     messaggio — quello che minaccia la cancellazione — a chi era stato chiamato
+     una volta sola. Il secondo giorno comincia dal secondo buco. */
+  else if(esito === 'Non raggiungibile' || (esito === 'Non risponde' && (c.tentativi_a_vuoto || 0) >= 2)){
                                     quale = 'secondo_giorno';         tipo = 'promemoria'; tentativo = 2; }
   else if(esito === 'Non risponde'){ quale = 'primo';                 tipo = 'promemoria'; tentativo = 1; }
   else if(ANDATA_BENE.has(esito)){  quale = 'bene_' + obiettivo;      tipo = 'recap'; }
