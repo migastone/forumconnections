@@ -208,7 +208,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
     <div id="passo-codice" class="nascosto">
       <p class="sub" style="margin-bottom:10px">Codice inviato a <b id="dove"></b></p>
-      <input class="campo" id="codice" inputmode="numeric" autocomplete="one-time-code" placeholder="·····" maxlength="6">
+      <input class="campo" id="codice" inputmode="numeric" autocomplete="one-time-code" placeholder="········" maxlength="8">
       <button class="btn oro" id="entra">Entra</button>
       <p style="text-align:center;margin:12px 0 0">
         <button class="link" id="indietro">Cambia indirizzo</button> ·
@@ -553,6 +553,8 @@ async function api(percorso, opzioni = {}, secondoTentativo = false){
    toglie da solo l'unico codice valido che ha, e poi prova con quello vecchio.
    L'attesa sopravvive al ricaricamento, perche' ricaricare e' proprio quello
    che si fa quando il codice non arriva. */
+/* Quante cifre ha il codice che arriva via email. */
+const CIFRE_CODICE = 8;
 const ATTESA_CODICE = 60;
 const ULTIMO_CODICE = 'fc_ultimo_codice';
 let conteggioCodice = null;
@@ -621,7 +623,13 @@ if(secondiMancanti() > 0){
 
 $('#entra').onclick = async () => {
   const email = $('#dove').textContent, token = $('#codice').value.replace(/\D/g,'');
-  if(token.length < 4) return avviso('#avviso-accesso','Inserisci il codice che hai ricevuto.');
+  if(!token) return avviso('#avviso-accesso','Inserisci il codice che hai ricevuto.');
+  /* Mandare un codice incompleto fa scattare l'errore generico del server, che
+     dice «non valido o scaduto» e manda a cercare il problema dalla parte
+     sbagliata: meglio dirlo qui, che manca una cifra. */
+  if(token.length !== CIFRE_CODICE)
+    return avviso('#avviso-accesso', 'Il codice ha ' + CIFRE_CODICE + ' cifre, ne hai messe '
+      + token.length + '. Ricontrolla l\'email.');
   $('#entra').disabled = true; avviso('#avviso-accesso','Verifico…','ok');
   try{
     salvaSessione(await verificaCodice(email, token));
@@ -629,19 +637,15 @@ $('#entra').onclick = async () => {
   }catch(e){ avviso('#avviso-accesso', e.message); }
   $('#entra').disabled = false;
 };
-/* Un controllo a vista sulla lunghezza. Il codice che manda Supabase e' corto:
-   se nel campo ce ne sono di piu' vuol dire che si e' copiato altro dall'email
-   insieme al codice, ed e' quello che era successo — sette cifre al posto di
-   cinque. Non si blocca l'invio: si avvisa e basta, perche' la lunghezza vera
-   la decide la configurazione e non voglio che una mia ipotesi impedisca a
-   qualcuno di entrare. */
+/* Il codice nell'email e' di OTTO cifre. Contarle serve: il modo piu' comune di
+   sbagliare non e' copiarne troppe, e' perderne una per strada — a Marica ne
+   erano arrivate sette nel campo. Il conto si mostra mentre digita, e la
+   conferma verde solo quando ci sono tutte. */
 $('#codice').addEventListener('input', () => {
   const cifre = $('#codice').value.replace(/\D/g,'');
-  if(cifre.length > 5)
-    avviso('#avviso-accesso', 'Hai messo ' + cifre.length + ' cifre, ma il codice ne ha 5. '
-      + 'Controlla di non aver copiato anche qualcos\'altro dall\'email.');
-  else if(cifre.length === 5)
-    avviso('#avviso-accesso', '');
+  if(cifre.length === 0) return avviso('#avviso-accesso', '');
+  if(cifre.length === CIFRE_CODICE) return avviso('#avviso-accesso', 'Codice completo.', 'ok');
+  avviso('#avviso-accesso', cifre.length + ' cifre su ' + CIFRE_CODICE + '.');
 });
 
 $('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
