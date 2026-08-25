@@ -1553,7 +1553,12 @@ async function apriScheda(id){
       /* il tentativo è registrato: ora si apre il messaggio già composto sullo
          stato di prima, e l'operatrice decide se e come mandarlo */
       apriComposizione(c, 'whatsapp', id, () => {
-        chiudi(); caricaCoda(true); caricaKpi();
+        /* La scheda si riapre invece di chiudersi. Da qui in poi il contatto ha
+           un buco registrato, quindi compare il pulsante SMS — che serve
+           adesso, non domani: il testo dice «ti richiamo domani». Chiudendo la
+           scheda bisognava ritrovare il contatto in lista per mandarlo, e
+           nessuno lo faceva. */
+        chiudi(); caricaCoda(true); caricaKpi(); apriScheda(c.id);
       }, { messaggio: m });
     }catch(e){ alert(e.message); bottone.disabled = false; }
   };
