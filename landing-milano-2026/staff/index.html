@@ -226,8 +226,6 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
     <span class="marchio">FORUM <span>RICONTATTI</span></span>
     <span class="chi" id="chi"></span>
     <select id="f-operatore" title="Di chi vuoi vedere la coda"></select>
-    <button class="btn nascosto" style="width:auto;padding:7px 12px;background:var(--gold);color:var(--ink)"
-            id="da-mandare" title="Messaggi che aspettano di essere mandati a mano"></button>
     <div class="kpi" id="kpi"></div>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="pausa">Pausa</button>
     <button class="btn" style="width:auto;padding:7px 12px;background:#3A3168" id="esci">Esci</button>
@@ -669,7 +667,7 @@ async function entra(){
   ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
   capacitaOra = { capacita: io.capacita, invio_automatico: io.invio_automatico, motivo: io.motivo };
   popolaOperatori();
-  await Promise.all([caricaSosia(), caricaKpi(), caricaDaMandare()]);
+  await Promise.all([caricaSosia(), caricaKpi()]);
   await caricaCoda(true);
 }
 
@@ -1134,8 +1132,8 @@ async function apriScheda(id){
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
-        ${primoMancato(c) ? `<button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
-          title="Un SMS breve, solo dopo il primo squillo a vuoto">SMS · ti richiamo domani</button>` : ''}
+        <button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
+          title="SMS breve: arriva da «MigaMATCH» e porta il numero da cui richiami">SMS · ti richiamo domani</button>
         <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
           esc(etichettaEmail(componiMessaggio(c, undefined, { canale:'email' })))}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
@@ -1648,11 +1646,6 @@ async function apriScheda(id){
 
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
    al secondo si chiude. */
-/* L'SMS ha senso in un momento solo: il telefono ha squillato a vuoto una
-   volta, e domani si riprova. Al secondo buco il contatto si archivia, e
-   mandargli un SMS a pagamento mentre lo si chiude non ha senso. */
-const primoMancato = c => (c.ultimo_esito === 'Non risponde') && (c.tentativi_a_vuoto || 0) === 1;
-
 function etichettaNonRisponde(c){
   if((c.tentativi_a_vuoto || 0) >= 1) return 'Non risponde · archivia';
   const g = prossimoGiornoLavorativo();
@@ -2466,73 +2459,7 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
   };
 }
 
-/* ═══════════════ messaggi rimasti da mandare a mano ═══════════════
-   Ci finiscono i promemoria che il cron della mattina non ha potuto spedire
-   perché le linee Migasender erano al limite o bloccate, più tutto quello che
-   è scaduto in coda. Il tetto vale solo per gli invii dal provider: mandati a
-   mano non consumano niente, quindi qui non si perde niente — basta che
-   qualcuno se ne accorga, ed è per questo che il pulsante sta in testata.    */
-let daMandare = [];
 
-async function caricaDaMandare(){
-  try{
-    const d = await api('/da-mandare');
-    daMandare = d.righe || [];
-  }catch(e){ daMandare = []; }
-  const b = $('#da-mandare');
-  b.textContent = daMandare.length + ' da mandare a mano';
-  b.classList.toggle('nascosto', daMandare.length === 0);
-}
-
-function apriDaMandare(){
-  if(daMandare.length === 0) return;
-  const velo = document.createElement('div');
-  velo.className = 'velo';
-  velo.innerHTML = `
-   <div class="scheda">
-    <header>
-      <span class="marchio">DA MANDARE A MANO</span>
-      <span class="chi">${daMandare.length} messaggi</span>
-      <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
-    </header>
-    <div class="corpo">
-      <p class="nota-riga">Le linee Migasender erano al limite quando questi dovevano partire. Mandarli da
-      WhatsApp Web non consuma il tetto, quindi si possono smaltire tutti — ma partono dal tuo numero
-      personale, non dalla linea.</p>
-      ${daMandare.map(m => `
-        <div class="riga" data-messaggio="${m.id}" style="cursor:pointer">
-          <div>
-            <div class="chi-nome">${esc([m.nome,m.cognome].filter(Boolean).join(' ')) || '(senza nome)'}</div>
-            <div class="meta">${esc(m.telefono || m.destinatario || '—')} · ${esc(m.tipo)}
-              ${m.operatore ? ' · ' + esc(m.operatore) : ''}</div>
-            ${m.errore ? `<div class="meta" style="color:var(--gold-dk)">${esc(m.errore)}</div>` : ''}
-          </div>
-          <div class="destra">${dataOra(m.creato_il)}</div>
-        </div>`).join('')}
-    </div>
-   </div>`;
-  document.body.appendChild(velo);
-  const chiudi = () => velo.remove();
-  velo.querySelector('[data-chiudi]').onclick = chiudi;
-  velo.addEventListener('click', e => { if(e.target === velo) chiudi(); });
-
-  velo.addEventListener('click', e => {
-    const r = e.target.closest('[data-messaggio]');
-    if(!r) return;
-    const m = daMandare.find(x => String(x.id) === r.dataset.messaggio);
-    if(!m) return;
-    /* il testo è già quello scritto dal cron: non si ricompone, si riapre */
-    apriComposizione(
-      { id:m.contatto_id, nome:m.nome, cognome:m.cognome, telefono:m.telefono, email:m.email },
-      m.canale || 'whatsapp', null,
-      () => { caricaDaMandare().then(()=>{ chiudi(); }); },
-      { messaggioId: m.id, messaggio: {
-          quale:'in_attesa', titolo:'promemoria rimasto in sospeso', obiettivo:'', tentativo:0,
-          tipo:m.tipo, mancano:[], oggetto:'Promemoria', testo:m.testo, testoEmail:m.testo } });
-  });
-}
-
-$('#da-mandare').onclick = apriDaMandare;
 
 /* ═══════════════ pausa ═══════════════ */
 $('#pausa').onclick = async () => {
