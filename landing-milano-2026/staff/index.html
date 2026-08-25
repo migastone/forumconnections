@@ -207,7 +207,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 
     <div id="passo-codice" class="nascosto">
       <p class="sub" style="margin-bottom:10px">Codice inviato a <b id="dove"></b></p>
-      <input class="campo" id="codice" inputmode="numeric" autocomplete="one-time-code" placeholder="·····" maxlength="8">
+      <input class="campo" id="codice" inputmode="numeric" autocomplete="one-time-code" placeholder="·····" maxlength="6">
       <button class="btn oro" id="entra">Entra</button>
       <p style="text-align:center;margin:12px 0 0">
         <button class="link" id="indietro">Cambia indirizzo</button> ·
@@ -476,21 +476,48 @@ async function verificaCodice(email, token){
     body: JSON.stringify({ email, token, type:'email' })
   });
   const d = await r.json().catch(()=>({}));
-  if(!r.ok || !d.access_token) throw new Error(d.msg || d.error_description || 'Codice non valido o scaduto.');
+  if(!r.ok || !d.access_token){
+    /* Il messaggio che arriva e' quello grezzo di Supabase, in inglese, e non
+       dice la cosa che serve sapere: chiedere un codice nuovo INVALIDA quello
+       di prima. Chi ha due mail aperte prova quasi sempre con la piu' vecchia. */
+    const grezzo = (d.msg || d.error_description || d.error || '').toLowerCase();
+    if(grezzo.includes('expired') || grezzo.includes('invalid'))
+      throw new Error('Codice non valido o scaduto. Chiedine uno nuovo qui sotto e usa quello '
+        + 'dell\'ultima email arrivata: appena ne chiedi un altro, i codici precedenti smettono '
+        + 'di funzionare.');
+    throw new Error(d.msg || d.error_description || 'Codice non valido o scaduto.');
+  }
   return d;
 }
 
+/* Il rinnovo del token si fa UNO ALLA VOLTA.
+   Il token di rinnovo e' usa e getta: appena viene speso, quello vecchio non
+   vale piu'. Al caricamento la pagina fa partire piu' richieste insieme — coda,
+   KPI, messaggi da mandare, omonimie — e se il token era scaduto tutte
+   scoprivano il 403 nello stesso istante e provavano a rinnovare in parallelo.
+   La prima ci riusciva, le altre spendevano un token gia' bruciato, fallivano,
+   e buttavano fuori l'operatrice. Succedeva solo dopo un ricaricamento a
+   sessione scaduta, che e' esattamente quando e' successo a Marica. */
+let rinnovoInCorso = null;
+
 async function rinnova(){
   if(!sessione?.refresh_token) return false;
-  const r = await fetch(URL_SUPA + '/auth/v1/token?grant_type=refresh_token', {
-    method:'POST', headers:{'apikey':CHIAVE,'Content-Type':'application/json'},
-    body: JSON.stringify({ refresh_token: sessione.refresh_token })
-  });
-  if(!r.ok) return false;
-  const d = await r.json();
-  if(!d.access_token) return false;
-  salvaSessione(d);
-  return true;
+  if(rinnovoInCorso) return rinnovoInCorso;
+  rinnovoInCorso = (async () => {
+    try{
+      const r = await fetch(URL_SUPA + '/auth/v1/token?grant_type=refresh_token', {
+        method:'POST', headers:{'apikey':CHIAVE,'Content-Type':'application/json'},
+        body: JSON.stringify({ refresh_token: sessione.refresh_token })
+      });
+      if(!r.ok) return false;
+      const d = await r.json();
+      if(!d.access_token) return false;
+      salvaSessione(d);
+      return true;
+    }catch(e){ return false; }
+  })();
+  try{ return await rinnovoInCorso; }
+  finally{ rinnovoInCorso = null; }
 }
 
 /* ═══════════════ chiamate all'API ═══════════════ */
@@ -549,6 +576,21 @@ $('#entra').onclick = async () => {
   }catch(e){ avviso('#avviso-accesso', e.message); }
   $('#entra').disabled = false;
 };
+/* Un controllo a vista sulla lunghezza. Il codice che manda Supabase e' corto:
+   se nel campo ce ne sono di piu' vuol dire che si e' copiato altro dall'email
+   insieme al codice, ed e' quello che era successo — sette cifre al posto di
+   cinque. Non si blocca l'invio: si avvisa e basta, perche' la lunghezza vera
+   la decide la configurazione e non voglio che una mia ipotesi impedisca a
+   qualcuno di entrare. */
+$('#codice').addEventListener('input', () => {
+  const cifre = $('#codice').value.replace(/\D/g,'');
+  if(cifre.length > 5)
+    avviso('#avviso-accesso', 'Hai messo ' + cifre.length + ' cifre, ma il codice ne ha 5. '
+      + 'Controlla di non aver copiato anche qualcos\'altro dall\'email.');
+  else if(cifre.length === 5)
+    avviso('#avviso-accesso', '');
+});
+
 $('#codice').addEventListener('keydown', e => { if(e.key==='Enter') $('#entra').click(); });
 $('#email').addEventListener('keydown', e => { if(e.key==='Enter') $('#chiedi').click(); });
 
