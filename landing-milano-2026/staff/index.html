@@ -39,6 +39,7 @@ button{cursor:pointer}
 .avviso.err{background:#FDECEC;color:#98292E;border:1px solid #F3C9C9}
 .avviso.ok{background:#EAF6EF;color:#245F3D;border:1px solid #C6E5D3}
 .link{background:none;border:0;color:var(--gold-dk);text-decoration:underline;padding:0;width:auto;font-size:.87rem}
+.link:disabled{color:var(--tenue);text-decoration:none;cursor:default}
 
 /* ---------- struttura ---------- */
 header{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-items:center;gap:18px;
@@ -544,19 +545,60 @@ async function api(percorso, opzioni = {}, secondoTentativo = false){
 }
 
 /* ═══════════════ avvio ═══════════════ */
+
+/* Un minuto fra un codice e l'altro.
+   Non e' una protezione — sta nel browser e chiunque puo' aggirarla — ma
+   difende da un errore onesto che si paga caro: chiedere un codice nuovo
+   ANNULLA quello appena arrivato. Chi preme «Rinvia» perche' l'email tarda si
+   toglie da solo l'unico codice valido che ha, e poi prova con quello vecchio.
+   L'attesa sopravvive al ricaricamento, perche' ricaricare e' proprio quello
+   che si fa quando il codice non arriva. */
+const ATTESA_CODICE = 60;
+const ULTIMO_CODICE = 'fc_ultimo_codice';
+let conteggioCodice = null;
+
+const secondiMancanti = () => {
+  try{
+    const quando = Number(localStorage.getItem(ULTIMO_CODICE) || 0);
+    return Math.max(0, ATTESA_CODICE - Math.floor((Date.now() - quando) / 1000));
+  }catch(e){ return 0; }
+};
+
+function aggiornaAttesaCodice(){
+  const restano = secondiMancanti();
+  const bloccati = restano > 0;
+  $('#chiedi').disabled = bloccati;
+  $('#rinvia').disabled = bloccati;
+  $('#chiedi').textContent = bloccati ? `Invia il codice · fra ${restano} s` : 'Invia il codice';
+  $('#rinvia').textContent = bloccati ? `Rinvia fra ${restano} s` : 'Rinvia';
+  if(!bloccati && conteggioCodice){ clearInterval(conteggioCodice); conteggioCodice = null; }
+}
+
+function avviaAttesaCodice(){
+  try{ localStorage.setItem(ULTIMO_CODICE, String(Date.now())); }catch(e){}
+  if(conteggioCodice) clearInterval(conteggioCodice);
+  conteggioCodice = setInterval(aggiornaAttesaCodice, 1000);
+  aggiornaAttesaCodice();
+}
+
 $('#chiedi').onclick = async () => {
+  if(secondiMancanti() > 0) return;
   const email = $('#email').value.trim().toLowerCase();
   if(!email.includes('@')) return avviso('#avviso-accesso','Serve un indirizzo email valido.');
   $('#chiedi').disabled = true; avviso('#avviso-accesso','Invio il codice…','ok');
   try{
     await chiediCodice(email);
+    avviaAttesaCodice();
     $('#dove').textContent = email;
     $('#passo-email').classList.add('nascosto');
     $('#passo-codice').classList.remove('nascosto');
-    avviso('#avviso-accesso','Controlla la posta. Il codice scade dopo pochi minuti.','ok');
+    avviso('#avviso-accesso','Controlla la posta e usa il codice di quest\'ultima email: '
+      + 'chiedendone un altro, questo smette di funzionare.','ok');
     $('#codice').focus();
-  }catch(e){ avviso('#avviso-accesso', e.message); }
-  $('#chiedi').disabled = false;
+  }catch(e){
+    avviso('#avviso-accesso', e.message);
+    $('#chiedi').disabled = false;
+  }
 };
 
 $('#indietro').onclick = () => {
@@ -564,7 +606,18 @@ $('#indietro').onclick = () => {
   $('#passo-email').classList.remove('nascosto');
   avviso('#avviso-accesso','');
 };
-$('#rinvia').onclick = () => { $('#chiedi').click(); };
+$('#rinvia').onclick = () => {
+  if(secondiMancanti() > 0) return;
+  /* Rinviare significa tornare al passo dell'email con lo stesso indirizzo. */
+  $('#email').value = $('#dove').textContent;
+  $('#chiedi').click();
+};
+
+/* Se si ricarica mentre l'attesa e' ancora in corso, il conto riprende. */
+if(secondiMancanti() > 0){
+  conteggioCodice = setInterval(aggiornaAttesaCodice, 1000);
+  aggiornaAttesaCodice();
+}
 
 $('#entra').onclick = async () => {
   const email = $('#dove').textContent, token = $('#codice').value.replace(/\D/g,'');
