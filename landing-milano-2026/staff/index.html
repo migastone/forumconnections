@@ -1134,6 +1134,8 @@ async function apriScheda(id){
         ${TERMINALI.has(c.ultimo_esito || '') ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
+        ${primoMancato(c) ? `<button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
+          title="Un SMS breve, solo dopo il primo squillo a vuoto">SMS · ti richiamo domani</button>` : ''}
         <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
           esc(etichettaEmail(componiMessaggio(c, undefined, { canale:'email' })))}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
@@ -1629,6 +1631,8 @@ async function apriScheda(id){
 
   q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId, null,
                                      { messaggio: messaggioPer('whatsapp') });
+  if(q('[data-sms]')) q('[data-sms]').onclick = () => apriComposizione(c, 'sms', chiamataId, null,
+                                     { messaggio: messaggioPer('sms') });
   q('[data-email]').onclick = () => apriComposizione(c, 'email', chiamataId, null,
                                      { messaggio: messaggioPer('email') });
 
@@ -1639,6 +1643,11 @@ async function apriScheda(id){
 
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
    al secondo si chiude. */
+/* L'SMS ha senso in un momento solo: il telefono ha squillato a vuoto una
+   volta, e domani si riprova. Al secondo buco il contatto si archivia, e
+   mandargli un SMS a pagamento mentre lo si chiude non ha senso. */
+const primoMancato = c => (c.ultimo_esito === 'Non risponde') && (c.tentativi_a_vuoto || 0) === 1;
+
 function etichettaNonRisponde(c){
   if((c.tentativi_a_vuoto || 0) >= 1) return 'Non risponde · archivia';
   const g = prossimoGiornoLavorativo();
@@ -2036,6 +2045,15 @@ Scrivimi se preferisci che ti cancelliamo dai nostri archivi, così non ti distu
 
 A presto, ${p.op}`,
 
+  /* SMS del primo buco. Vincoli suoi, diversi da tutti gli altri messaggi:
+     centosessanta caratteri, e il mittente e' il nome «MigaMATCH», non un
+     numero — quindi non si puo' rispondere. Per questo il numero da cui
+     l'operatrice richiama sta dentro al testo: quando domani squilla, e' gia'
+     salvato. E «di MigaMATCH» resta anche per i contatti che ci conoscono come
+     Segnalazione Vincente, perche' e' quello che leggono come mittente. */
+  sms_primo: p =>
+`Sono ${p.opNome} di MigaMATCH. Ti ho cercato per regalarti la copia di Economy e un contatto business gratuito, senza impegno. Ti richiamo domani da ${p.telOperatrice}`,
+
   solo_economy: p =>
 `Ciao ${p.nome}, come promesso al telefono ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pagina 22 ci trovi noi.
 
@@ -2071,6 +2089,7 @@ const OGGETTI = {
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   secondo_giorno: n => `${n}, ho provato a cercarti anche oggi`,
+  sms_primo: n => `${n}, ti ho cercato`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
   benvenuto_acquisto: n => `${n}, benvenuto: il tuo posto del 17 ottobre e le tre cose da fare`
 };
@@ -2103,7 +2122,9 @@ function componiMessaggio(c, operatore, opzioni){
   /* I due tentativi a vuoto li dichiara chi chiama il pulsante rapido: dedurli
      dallo stato non funziona piu' da quando «Da Ricontattare» copre anche chi
      ha risposto. */
-  if(o.tentativoAVuoto === 2){ quale = 'secondo_giorno'; tipo = 'promemoria'; tentativo = 2; }
+  /* L'SMS ne ha uno solo: lo decide il canale, non l'esito. */
+  if(o.canale === 'sms'){ quale = 'sms_primo'; tipo = 'promemoria'; tentativo = 1; }
+  else if(o.tentativoAVuoto === 2){ quale = 'secondo_giorno'; tipo = 'promemoria'; tentativo = 2; }
   else if(o.tentativoAVuoto === 1){ quale = 'primo'; tipo = 'promemoria'; tentativo = 1; }
   else if(c.acquirente){ quale = 'benvenuto_acquisto'; tipo = 'benvenuto'; }
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
@@ -2145,6 +2166,9 @@ function componiMessaggio(c, operatore, opzioni){
   if(quale.startsWith('bene_') && !data) mancano.push('data');
   if(quale === 'appuntamento' && !data) mancano.push('data');
   if(quale === 'ci_pensa' && !data) mancano.push('data');
+  /* Senza il numero dell'operatrice l'SMS perde la sua unica parte utile:
+     dire da dove arrivera' la chiamata. */
+  if(quale === 'sms_primo' && !(io && io.telefono)) mancano.push('il numero da cui richiami');
   if(quale === 'email_promesso' && !data) mancano.push('data');
   if((quale === 'bene_forum' || quale === 'email_promesso') && !prezzo) mancano.push('prezzo');
   if(quale === 'quattro_b' && !edizione) mancano.push('edizione');
@@ -2152,8 +2176,13 @@ function componiMessaggio(c, operatore, opzioni){
   const p = { nome, op, edizione,
               brand: BRAND_VARIANTE[quale] ?? brand,
               data, prezzo, link: linkAcquisto(pacchetto),
-              linkProfilo: LINK_PROFILO, linkGuida: LINK_GUIDA };
+              linkProfilo: LINK_PROFILO, linkGuida: LINK_GUIDA,
+              /* nome di battesimo: nell'SMS il cognome sono caratteri buttati */
+              opNome: (op || '').trim().split(/\s+/)[0] || op,
+              telOperatrice: (io && io.telefono) || '' };
   const testo = TESTI[quale](p);
+  /* Nell'SMS il grassetto di WhatsApp si vedrebbe come asterischi. */
+  const testoSms = testo.replace(/\*([^*\n]+)\*/g, '$1');
   const TITOLI = {
     primo: 'primo tentativo a vuoto',
     quattro_a: 'secondo tentativo a vuoto · profilo da completare',
@@ -2164,6 +2193,7 @@ function componiMessaggio(c, operatore, opzioni){
     appuntamento: 'chiamata a metà · appuntamento preso',
     ci_pensa: 'ci sta pensando · si risente',
     secondo_giorno: 'secondo giorno a vuoto · ultimo messaggio',
+    sms_primo: 'primo buco · SMS',
     solo_economy: 'ha detto di no · Economy lo stesso',
     email_promesso: 'ha detto di venire e non ha ancora comprato',
     benvenuto_acquisto: 'ha comprato · benvenuto e istruzioni'
@@ -2176,7 +2206,8 @@ function componiMessaggio(c, operatore, opzioni){
     oggetto: OGGETTI[quale](nome),
     testo,
     /* nell'email il grassetto di WhatsApp non si vede: si toglie */
-    testoEmail: testo.replace(/\*([^*\n]+)\*/g, '$1')
+    testoEmail: testo.replace(/\*([^*\n]+)\*/g, '$1'),
+    testoSms
   };
 }
 
@@ -2228,7 +2259,7 @@ function etichettaEmail(m){
    — è un promemoria che aspettava una mano — si aggiorna quella riga invece di
    crearne una seconda.                                                       */
 async function registraMessaggio(c, m, canale, chiamataId, testo, aMano, messaggioId){
-  const corpo = testo ?? (canale === 'email' ? m.testoEmail : m.testo);
+  const corpo = testo ?? (canale === 'email' ? m.testoEmail : canale === 'sms' ? m.testoSms : m.testo);
   const finale = canale === 'email' ? (m.oggetto + '\n\n' + corpo) : corpo;
   try{
     if(messaggioId){
@@ -2269,7 +2300,7 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
   velo.innerHTML = `
    <div class="composa">
     <header>
-      <span class="marchio">${canale === 'email' ? 'EMAIL' : 'WHATSAPP'}</span>
+      <span class="marchio">${canale === 'email' ? 'EMAIL' : canale === 'sms' ? 'SMS' : 'WHATSAPP'}</span>
       <span class="chi" data-quale></span>
       <button class="btn" style="width:auto;padding:6px 12px;margin-left:auto;background:#3A3168" data-chiudi>Chiudi</button>
     </header>
@@ -2292,12 +2323,14 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
       <div data-motivo></div>
 
       <div class="azioni">
-        <button class="btn oro" data-invia>${canale === 'email'
+        <button class="btn oro" data-invia>${canale === 'sms' ? 'Manda l\'SMS' : canale === 'email'
           ? ('Invia da ' + (io?.email_mittente || 'il tuo indirizzo'))
           : ('Invia dalla linea ' + (io?.linea_migasender ? io.linea_migasender : 'Migasender'))}</button>
-        <button class="btn" data-mano>${canale === 'email' ? 'Copia il testo e segnalo inviato a mano' : 'Invia a mano con WhatsApp Web'}</button>
+        ${canale === 'sms' ? '' : `<button class="btn" data-mano>${canale === 'email'
+          ? 'Copia il testo e segnalo inviato a mano' : 'Invia a mano con WhatsApp Web'}</button>`}
       </div>
 
+      ${canale === 'sms' ? '<p class="contatore" data-conta-sms></p>' : ''}
       ${canale === 'email'
         ? `<p class="nota-riga">Parte da <b>${esc(io?.email_mittente || '—')}</b>, che gira sulla tua casella:
            se ti rispondono, la risposta arriva a te. Qui non ci sono tetti da rispettare, quelli valgono
@@ -2321,7 +2354,8 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
     q('[data-quale]').textContent = corrente.titolo ?? (corrente.quale.startsWith('bene_')
       ? 'recap dopo la chiamata · ' + corrente.obiettivo
       : `tentativo n.${corrente.tentativo} · ${corrente.obiettivo}`);
-    q('[data-testo]').value = canale === 'email' ? corrente.testoEmail : corrente.testo;
+    q('[data-testo]').value = canale === 'email' ? corrente.testoEmail
+      : canale === 'sms' ? corrente.testoSms : corrente.testo;
     if(q('[data-oggetto]')) q('[data-oggetto]').value = corrente.oggetto;
 
     const manca = corrente.mancano.length > 0;
@@ -2333,11 +2367,15 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
           : '');
     /* L'email non ha tetti da rispettare: quelli sono un limite delle linee
        Migasender, non di SendGrid. Se il testo e' completo, si manda e basta. */
-    const autoOk = !manca && (canale === 'email' ? true : (capacitaOra ? capacitaOra.invio_automatico : true));
+    const autoOk = !manca && (canale === 'email' || canale === 'sms' ? true
+      : (capacitaOra ? capacitaOra.invio_automatico : true));
+    if(canale === 'sms') contaCaratteriSms();
     q('[data-invia]').disabled = !autoOk;
     q('[data-mano]').disabled = manca;
   }
   ridisegna();
+
+  if(canale === 'sms') q('[data-testo]').addEventListener('input', contaCaratteriSms);
 
   if(q('[data-pacchetto]')) q('[data-pacchetto]').onchange = (e) => {
     corrente = componiMessaggio(c, undefined, { pacchetto: e.target.value, canale });
@@ -2345,6 +2383,19 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
   };
 
   const testoScelto = () => q('[data-testo]').value.trim();
+
+  /* Sopra i 160 caratteri l'SMS diventa due messaggi: costa il doppio e arriva
+     spezzato su certi telefoni. Il conto si vede mentre si scrive, perche' e'
+     l'unico canale dove una parola in piu' si paga. */
+  function contaCaratteriSms(){
+    const el = q('[data-conta-sms]');
+    if(!el) return;
+    const n = testoScelto().length;
+    const segmenti = n <= 160 ? 1 : Math.ceil(n / 153);
+    el.textContent = n + ' caratteri' + (segmenti > 1
+      ? ` — sono ${segmenti} SMS: accorcia sotto i 160 se puoi` : ' su 160');
+    el.classList.toggle('corto', segmenti > 1);
+  }
 
   /* invio dal server: il testo che parte è quello del campo */
   q('[data-invia]').onclick = async () => {
@@ -2364,13 +2415,15 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
       if(r.inviato){
         avviso('[data-esito-invio]', (canale === 'email'
           ? 'Email inviata da ' + (io?.email_mittente || 'il tuo indirizzo') + '.'
+          : canale === 'sms'
+          ? 'SMS partito. Arriva da «MigaMATCH», quindi non possono rispondere: il numero per richiamarti è dentro al testo.'
           : 'Inviato dalla linea Migasender.') + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
         if(dopo) dopo();
         setTimeout(chiudi, 1200);
       }else{
         avviso('[data-esito-invio]', (r.motivo || 'Invio non riuscito.') + ' ' + (canale === 'email'
           ? 'Copia il testo qui sotto e mandalo dalla tua posta.'
-          : 'Mandalo a mano qui sotto.'));
+          : canale === 'sms' ? '' : 'Mandalo a mano qui sotto.'));
         q('[data-invia]').disabled = true;
       }
     }catch(e){
