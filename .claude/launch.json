@@ -4,8 +4,8 @@
     {
       "name": "landing",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4321", "--bind", "127.0.0.1", "--directory", "landing-milano-2026"],
-      "port": 4321
+      "runtimeArgs": ["-m", "http.server", "4173", "--directory", "landing-milano-2026"],
+      "port": 4173
     }
   ]
 }

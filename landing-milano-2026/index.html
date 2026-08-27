@@ -502,6 +502,8 @@ footer a{color:#B9B3DA}
 
         <p class="tool-step" style="margin-top:26px">2 · Che dimensione hanno le aziende che ti interessano? <span style="text-transform:none;letter-spacing:0;font-weight:600;color:#8B87A6">(facoltativo)</span></p>
         <div class="chips" id="chips-dim"></div>
+        <p style="font-size:.8rem;color:#8B87A6;margin:10px 0 0">Le percentuali di questa riga sono
+          calcolate sui 987 connettori che hanno compilato il campo, non sull'intera rete.</p>
 
         <p style="font-size:.84rem;color:#8B87A6;margin:16px 0 0">
           <button id="reset" style="background:none;border:0;color:var(--gold-dk);font-weight:700;
@@ -1133,12 +1135,16 @@ const chips    = document.getElementById('chips');
 const chipsDim = document.getElementById('chips-dim');
 const out      = document.getElementById('out');
 const fmt      = n => n.toLocaleString('it-IT');
+/* Quota sul bacino di riferimento. Le aree si leggono su tutta la rete,
+   le dimensioni aziendali solo su chi ha compilato quel campo: usare
+   RETE_TOT anche li' farebbe sembrare la copertura meta' di quella vera. */
+const pct      = (n, base) => Math.round(n / base * 100) + '%';
 
 AREE.forEach(a => {
   const b = document.createElement('button');
   b.className = 'chip'; b.type = 'button';
   b.setAttribute('aria-pressed','false'); b.dataset.id = a.id;
-  b.innerHTML = `<span>${a.ico}</span> ${a.nome} <span class="cnt">${fmt(a.tot)}</span>`;
+  b.innerHTML = `<span>${a.ico}</span> ${a.nome} <span class="cnt">${pct(a.tot, RETE_TOT)}</span>`;
   b.addEventListener('click', () => {
     if (sel.has(a.id)) { sel.delete(a.id); b.setAttribute('aria-pressed','false'); }
     else               { sel.add(a.id);    b.setAttribute('aria-pressed','true');  }
@@ -1152,7 +1158,7 @@ DIMENSIONI.forEach(d => {
   b.className = 'chip'; b.type = 'button';
   b.setAttribute('aria-pressed','false'); b.dataset.id = d.id;
   b.innerHTML = `${d.nome} <span style="color:#8B87A6;font-weight:500">${d.det}</span>
-                 <span class="cnt">${fmt(d.tot)}</span>`;
+                 <span class="cnt">${pct(d.tot, DIM_COMPILATO)}</span>`;
   b.addEventListener('click', () => {
     if (selDim.has(d.id)) { selDim.delete(d.id); b.setAttribute('aria-pressed','false'); }
     else                  { selDim.add(d.id);    b.setAttribute('aria-pressed','true');  }
@@ -1183,6 +1189,10 @@ function render(){
     ? Math.max(...aree.flatMap(a => dims.map(d => (AREA_X_DIM[a.id] || {})[d.id] || 0)))
     : Math.max(...aree.map(a => a.tot));
 
+  /* Il denominatore segue il filtro: senza dimensione e' tutta la rete, con la
+     dimensione e' il sottoinsieme che ha compilato quel campo. */
+  const base = dims.length ? DIM_COMPILATO : RETE_TOT;
+
   /* sottosettori uniti */
   const subs = [];
   aree.forEach(a => (SOTTOSETTORI[a.id]||[]).forEach(x => subs.push(x)));
@@ -1203,8 +1213,11 @@ function render(){
 
   out.innerHTML = `
     <div class="res-head">
-      <span class="big">${fmt(picco)}+</span>
-      <p>persone della rete MigaMATCH hanno influenza diretta in:<br><strong style="color:#fff">${nomi}</strong>
+      <span class="big">${pct(picco, base)}</span>
+      <p>${dims.length ? 'di chi ha dichiarato la taglia delle aziende' : 'della rete MigaMATCH'}
+      ha influenza diretta in:<br><strong style="color:#fff">${nomi}</strong>
+      <br><span style="display:inline-block;margin-top:6px;font-size:.85rem;color:#8B87A6">
+        ${fmt(picco)}+ persone su ${fmt(base)}</span>
       ${dims.length ? `<br><span style="display:inline-block;margin-top:10px;padding:5px 14px;
           border:1px solid rgba(239,199,94,.5);border-radius:99px;font-size:.85rem">
           e ci arrivano in aziende di taglia: <strong style="color:var(--gold)">${nomiDim}</strong></span>` : ''}</p>
@@ -1232,7 +1245,7 @@ function render(){
       <strong>Come leggerlo.</strong> La colonna di sinistra dice <em>chi sono</em> le persone che hanno
       contatti nei settori che hai scelto: è il loro mestiere, ed è il motivo per cui possono presentarti.
       La colonna di destra dice <em>dove</em> arrivano esattamente i loro contatti.
-      Il numero grande è una stima prudente: prendiamo il valore della combinazione più popolata invece
+      La percentuale grande è una stima prudente: prendiamo la combinazione più popolata invece
       di sommare, perché la stessa persona ha spesso influenza in più settori e sommare gonfierebbe il dato.
       ${dims.length ? `<br><strong>Sul filtro dimensione.</strong> La taglia delle aziende è un campo
       facoltativo della profilazione: l'ha compilato ${fmt(DIM_COMPILATO)} connettori su ${fmt(RETE_TOT)}.
