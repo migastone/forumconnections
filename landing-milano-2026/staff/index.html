@@ -164,6 +164,28 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   color:#8A6A17;font-weight:700}
 .evento-prof{border-top:1px solid var(--bordo);padding:8px 0;font-size:.86rem;
   color:#22603F;font-weight:700}
+/* Da dove ci conosce e a che punto siamo: le due domande a cui la setter deve
+   rispondere prima di premere «chiama». Prima erano sparse fra una riga di
+   fonti contate a numero e un «ultimo esito» secco, e la storia del contatto
+   andava ricostruita a mente mentre il telefono squillava. */
+.origine{margin:0 0 12px;padding:11px 13px;border-radius:10px;
+  background:#F1EFFA;border:1px solid #DBD5F0}
+.origine h4,.punto h4{margin:0 0 7px;font-size:.7rem;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;color:#5B4E97}
+.origine ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.origine li{display:flex;gap:9px;align-items:flex-start;font-size:.91rem;line-height:1.38}
+.origine li .ico{flex:0 0 auto;font-size:1.02rem;line-height:1.3}
+.origine li.freddo{color:var(--tenue)}
+.punto{margin:0 0 12px;padding:11px 13px;border-radius:10px;
+  background:#EAF1FB;border:1px solid #CFDEF4;font-size:.91rem;line-height:1.4}
+.punto h4{color:#2C4E80}
+.punto .fare{margin-top:6px;padding-top:6px;border-top:1px solid #CFDEF4;font-weight:700;color:#1F3E6B}
+.punto.chiuso{background:#F5F4F8;border-color:var(--bordo)}
+.punto.chiuso h4{color:var(--tenue)}
+.punto.chiuso .fare{border-top-color:var(--bordo);color:var(--tenue)}
+.punto.urgente{background:#FFF4F4;border-color:#F0C6C6}
+.punto.urgente h4{color:#98292E}
+.punto.urgente .fare{border-top-color:#F0C6C6;color:#98292E}
 .sosia{margin:12px 0 0;padding:12px 14px;border:1px solid #E8C98F;border-radius:10px;background:#FFFBF2}
 .sosia h4{margin:0 0 4px;font-size:.92rem;color:#8A6A17}
 .sosia p{margin:0 0 10px;font-size:.87rem;color:var(--tenue)}
@@ -1053,6 +1075,20 @@ async function apriScheda(id){
     <div class="corpo">
 
       <div class="recap">
+        ${tratti.length ? `<div class="tratti">${tratti.map(esc).join(' · ')}</div>` : ''}
+        <div style="margin-bottom:10px"><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'}
+             <span class="pill ${obiettivo==='profilazione'?'cta-prof':'cta-forum'}">${obiettivo==='profilazione'?'CTA: profilazione':'CTA: Forum'}</span>
+             ${c.pronto_per_forum?'<span class="pill maturo">pronto per il Forum</span>':''}</div>
+
+        ${(() => { const v = provenienza(c); return v.length ? `<div class="origine">
+          <h4>Da dove ci conosce</h4>
+          <ul>${v.map(r => `<li${r.freddo ? ' class="freddo"' : ''}><span class="ico">${r.ico}</span>
+            <span>${r.testo}</span></li>`).join('')}</ul>
+        </div>` : `<div class="origine"><h4>Da dove ci conosce</h4>
+          <ul><li class="freddo"><span class="ico">❔</span><span>Non risulta da nessuna lista
+            riconoscibile: apri la chiamata senza dare per scontato che ci conosca.</span></li></ul>
+        </div>`; })()}
+
         ${profilatoDopoLaChiamata(c) ? `<div class="fatta">✓ <b>Si è profilato dopo la nostra chiamata</b>${
            c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}.${
            c.ultimo_esito === 'Promette Profilazione' ? ' Promessa mantenuta.' : ''}
@@ -1065,27 +1101,28 @@ async function apriScheda(id){
         ${profiloAMeta(c) ? `<div class="a-meta">⚠ <b>Ha aperto la profilazione e non l'ha completata</b>${
            c.profilato_il ? ', l\'ultima volta il ' + new Date(c.profilato_il).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : ''}.
            È un aggancio: aveva cominciato e si è fermato, gli mancano dieci minuti.</div>` : ''}
-        ${tratti.length ? `<div class="tratti">${tratti.map(esc).join(' · ')}</div>` : ''}
-        <div><b>${esc(c.fascia || '')}</b> · priorità ${c.priorita ?? '—'} ·
-             ${(c.fonti||[]).length} font${(c.fonti||[]).length===1?'e':'i'}
-             ${c.atto1?' · 🖥️ Atto 1':''}${c.atto2?' · 🤝 Atto 2':''}
-             <span class="pill ${obiettivo==='profilazione'?'cta-prof':'cta-forum'}">${obiettivo==='profilazione'?'CTA: profilazione':'CTA: Forum'}</span>
-             ${c.pronto_per_forum?'<span class="pill maturo">pronto per il Forum</span>':''}</div>
-        <div style="margin-top:5px">${obiettivo==='profilazione'
-           ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
-           : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
-        ${c.promessa_aperta ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
+
+        ${(() => { const p = situazione(c); return `<div class="punto ${p.classe}">
+          <h4>A che punto siamo · ${esc(c.ultimo_esito || 'Da Contattare')}${
+            c.n_chiamate ? ' · ' + c.n_chiamate + ' tentativ' + (c.n_chiamate === 1 ? 'o' : 'i') : ''}${
+            c.ultima_chiamata_il ? ' · ultima il ' + dataOra(c.ultima_chiamata_il) : ''}</h4>
+          <div>${p.testo}</div>
+          ${p.fare ? `<div class="fare">${p.fare}</div>` : ''}
+          <div class="fare">${obiettivo==='profilazione'
+             ? 'Da questa chiamata devi portare a casa <b>la data entro cui si profila</b>.'
+             : 'Da questa chiamata devi portare a casa <b>la data in cui vi risentite per il biglietto</b>.'}</div>
+        </div>`; })()}
+
+        ${(c.promessa_aperta && c.ultimo_esito !== 'Promette Profilazione') ? `<div style="margin-top:5px">Ha promesso di profilarsi entro
            <b>${esc(dataImpegno(c) || 'una data che non è stata segnata')}</b>${promessaScaduta(c)
              ? ' — <b>la data è passata</b> e il profilo non risulta ancora completato: è questo il motivo della chiamata.'
              : '. Se nel frattempo lo completa, sparisce da qui da solo e torna fra sette giorni per il feedback.'}</div>`:''}
-        ${c.pronto_per_forum ? `<div style="margin-top:5px">Si è profilato
+        ${(c.pronto_per_forum && c.ultimo_esito !== 'Profilato - Call back') ? `<div style="margin-top:5px">Si è profilato
            ${c.profilato_il ? 'il ' + dataOra(c.profilato_il) : ''} dopo una nostra chiamata, e sono passati
            più di sette giorni: è il momento del feedback e della proposta per il Forum.
            L'esito da usare è <b>Profilato - Call back</b>.</div>`:''}
         ${c.crm_consulente ? `<div style="margin-top:5px">In trattativa CRM (<b>${esc(c.crm_stage||'')}</b>) seguita da
              <b>${esc(c.crm_consulente)}</b>${c.crm_consulente===io.nome?' — sei tu':' — coordinati prima di chiamare'}.</div>`:''}
-        <div style="margin-top:5px">${c.n_chiamate||0} tentativi · ultimo esito <b>${esc(c.ultimo_esito||'Da Contattare')}</b>
-             ${c.ultima_chiamata_il?' il '+dataOra(c.ultima_chiamata_il):''}</div>
         ${d.ultima_nota ? `<div style="margin-top:5px;color:var(--tenue)">Ultima nota: “${esc(d.ultima_nota.testo)}”</div>`:''}
         ${c.note_origine ? `<div style="margin-top:5px;color:var(--tenue)">Storico: ${esc(c.note_origine)}</div>`:''}
         <div class="riga-email">
@@ -1632,12 +1669,22 @@ async function apriScheda(id){
       apriComposizione(c, 'email', chiamataId, null, { messaggio: messaggioPer('email') });
   };
 
-  q('[data-wa]').onclick    = () => apriComposizione(c, 'whatsapp', chiamataId, null,
-                                     { messaggio: messaggioPer('whatsapp') });
-  if(q('[data-sms]')) q('[data-sms]').onclick = () => apriComposizione(c, 'sms', chiamataId, null,
-                                     { messaggio: messaggioPer('sms') });
-  q('[data-email]').onclick = () => apriComposizione(c, 'email', chiamataId, null,
-                                     { messaggio: messaggioPer('email') });
+  /* Se comporre il messaggio va storto, l'operatrice deve saperlo: un pulsante
+     che non fa niente e non dice niente e' il guasto piu' difficile da
+     segnalare — e infatti e' arrivato come «clicco e non succede nulla». */
+  const apri = canale => {
+    try{ apriComposizione(c, canale, chiamataId, null, { messaggio: messaggioPer(canale) }); }
+    catch(e){
+      console.error('composizione ' + canale + ':', e);
+      alert('Non riesco ad aprire il messaggio ' + canale.toUpperCase() + '.\n\n'
+        + (e && e.message ? e.message : 'errore imprevisto')
+        + '\n\nSegnalalo a Oscar: il contatto e la chiamata non sono stati toccati.');
+    }
+  };
+
+  q('[data-wa]').onclick    = () => apri('whatsapp');
+  if(q('[data-sms]')) q('[data-sms]').onclick = () => apri('sms');
+  q('[data-email]').onclick = () => apri('email');
 
   /* Una volta all'apertura: chi è maturo per il Forum ha già l'esito
      preselezionato, e i pulsanti devono dirlo subito. */
@@ -1882,7 +1929,9 @@ const linkAcquisto = q => `https://auto.migamatch.com/shop?sku=${PACCHETTI[q].sk
    il popup si rifiuta di mandare il messaggio: meglio fermarsi che scrivere a
    migliaia di persone un prezzo indovinato.                                  */
 const LISTINO = [
-  { fino: '2026-08-31', prezzo: '159 €' }
+  { fino: '2026-08-31', prezzo: '159 €' },
+  { fino: '2026-09-30', prezzo: '179 €' },
+  { fino: '2026-10-17', prezzo: '199 €' }
 ];
 function prezzoDelGiorno(quando){
   const g = (quando ? new Date(quando) : new Date()).toISOString().slice(0,10);
@@ -1897,12 +1946,195 @@ function prezzoDelGiorno(quando){
    L'edizione si legge dalle fonti; se ce n'è più di una vince la più recente,
    perché è quella che il contatto ricorda: San Marino (nov 2025), Rimini
    (mag 2025), Firenze prima ancora.                                          */
-function edizioneForum(c){
+/* Le tre edizioni dal vivo, in ordine di calendario. La data non sta nel
+   database: le liste presenze sono arrivate come fogli di acquisto biglietti,
+   senza colonna evento, quindi il periodo lo teniamo qui. Firenze e Rimini li
+   sappiamo al mese, San Marino al giorno (e' la data del video in home).
+   Se si aggiunge un'edizione, si aggiunge una riga qui e basta.              */
+const EDIZIONI = [
+  { fonte:'forum_firenze', citta:'Firenze',    quando:'marzo 2025' },
+  { fonte:'forum_rimini',  citta:'Rimini',     quando:'maggio 2025' },
+  { fonte:'forum_rsm',     citta:'San Marino', quando:'19 novembre 2025' }
+];
+
+/* Il BigBang e' stato una sera sola, in due atti di fila: la data e' la stessa
+   per tutti e la confermano le presenze Zoom su PROD. */
+const BIGBANG_QUANDO = '23 luglio 2026';
+
+/* Tutte le edizioni a cui e' stato, dalla piu' vecchia alla piu' recente.
+   Sono 32 le persone che ne hanno piu' di una e 2 che c'erano a tutte e tre:
+   mostrarne una sola le farebbe sembrare partecipanti di passaggio. */
+function edizioniDi(c){
   const f = (c.fonti || []).map(String);
-  if(f.includes('forum_rsm'))     return 'San Marino';
-  if(f.includes('forum_rimini'))  return 'Rimini';
-  if(f.includes('forum_firenze')) return 'Firenze';
-  return null;
+  return EDIZIONI.filter(e => f.includes(e.fonte));
+}
+
+/* Per il segnaposto [EDIZIONE] degli script serve una citta' sola: vince la
+   piu' recente, perche' e' quella che il contatto ricorda. */
+function edizioneForum(c){
+  const ed = edizioniDi(c);
+  return ed.length ? ed[ed.length - 1].citta : null;
+}
+
+/* Elenco leggibile: «Firenze e Rimini», non «Firenze, Rimini». */
+const unisci = v => v.length < 2 ? (v[0] || '')
+  : v.slice(0, -1).join(', ') + ' e ' + v[v.length - 1];
+
+/* Da dove ci conosce, in frasi intere. Le fonti erano contate a numero
+   («5 fonti»): un numero che non dice ne' quali ne' quando, e la setter
+   apriva la chiamata senza sapere se aveva davanti uno che c'era stato in
+   sala o uno che si era solo iscritto a un webinar e non era mai entrato. */
+function provenienza(c){
+  const f = (c.fonti || []).map(String);
+  const righe = [];
+
+  const ed = edizioniDi(c);
+  if(ed.length === 1)
+    righe.push({ ico:'\u{1F3AF}', testo:`\u00c8 stato al <b>Forum Connections</b> dal vivo a
+      <b>${esc(ed[0].citta)}</b>, ${esc(ed[0].quando)}.` });
+  else if(ed.length > 1)
+    righe.push({ ico:'\u{1F3AF}', testo:`\u00c8 stato a <b>${ed.length} edizioni</b> del
+      <b>Forum Connections</b> dal vivo: ${unisci(ed.map(e =>
+        `<b>${esc(e.citta)}</b> (${esc(e.quando)})`))}.` });
+
+  if(c.atto1 && c.atto2)
+    righe.push({ ico:'\u{1F5A5}\uFE0F', testo:`Ha seguito il <b>BigBang</b> online
+      <b>tutti e due gli atti</b>, il ${BIGBANG_QUANDO}.` });
+  else if(c.atto1 || c.atto2)
+    righe.push({ ico:'\u{1F5A5}\uFE0F', testo:`Ha seguito il <b>BigBang</b> online, il
+      ${BIGBANG_QUANDO}, ma <b>solo ${c.atto1 ? 'il primo atto' : 'il secondo atto'}</b>.` });
+  else if(f.includes('bigbang_profilato') || f.includes('bigbang_non_profilato'))
+    righe.push({ ico:'\u{1F4DD}', freddo:true, testo:`Si era iscritto al <b>BigBang</b> del
+      ${BIGBANG_QUANDO}, ma non risulta presente a nessuno dei due atti.` });
+
+  if(f.includes('speed_presente'))
+    righe.push({ ico:'\u{1F4BB}', testo:`\u00c8 stato a uno <b>Speed Connections</b> online.
+      La lista delle presenze non riporta la data.` });
+  else if(f.includes('speed_iscritto'))
+    righe.push({ ico:'\u{1F4A4}', freddo:true, testo:`Si era iscritto a uno
+      <b>Speed Connections</b> online, ma <b>non si \u00e8 presentato</b>.` });
+
+  if(f.includes('ricontatti_maggio'))
+    righe.push({ ico:'\u{1F4C7}', freddo:true, testo:`Era gi\u00e0 nella lista dei ricontatti di
+      <b>maggio</b>: qualcuno lo aveva gi\u00e0 chiamato allora.` });
+
+  return righe;
+}
+
+/* ═══════════════ a che punto siamo ═══════════════
+   Lo stato era una parola secca in fondo alla scheda («ultimo esito: Non
+   risponde») e la setter doveva sapere a memoria cosa comporta ognuno dei
+   quattordici. Qui ogni stato diventa due frasi: cos'e' successo, e cosa si
+   fa adesso. Le date sono quelle vere del contatto, non formule generiche. */
+
+const giornoLungo = v => {
+  const g = giornoIso(v);
+  if(!g) return null;
+  const d = new Date(g + 'T12:00:00');
+  /* L'anno si scrive solo quando non è questo: «giovedì 14 gennaio» per un
+     richiamo fissato al 2027 sembra la settimana prossima. */
+  return d.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long',
+    ...(d.getFullYear() === new Date().getFullYear() ? {} : {year:'numeric'})});
+};
+
+/* Una data d'impegno che il calendario si è già lasciato alle spalle. */
+const inRitardo = v => {
+  const g = giornoIso(v);
+  return !!g && new Date(g + 'T23:59:59') < new Date();
+};
+
+const SITUAZIONE = {
+  'Da Contattare': c => c.n_chiamate
+    ? { testo:`Era già stato lavorato (${c.n_chiamate} tentativ${c.n_chiamate === 1 ? 'o' : 'i'})
+        ed è stato rimesso fra quelli da chiamare: la lavorazione riparte da qui.` }
+    : { testo:`<b>Non l'ha ancora chiamato nessuno.</b> Questa è la prima telefonata:
+        quello che sai di lui è solo quello che c'è scritto qui sopra.` },
+
+  'Non risponde': c => {
+    const buchi = c.tentativi_a_vuoto || 0;
+    return buchi >= 2
+      ? { classe:'urgente',
+          testo:`Il telefono ha squillato a vuoto <b>${buchi} volte</b>, l'ultima${
+            c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}.
+            Gli è già partito il messaggio dell'ultimo tentativo.`,
+          fare:`<b>È l'ultimo giro.</b> Se non risponde neanche adesso l'esito è
+            <b>Non raggiungibile</b> e il contatto esce dalla lista.` }
+      : { testo:`Il telefono ha squillato a vuoto${
+            c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}.
+            È il <b>primo buco</b>: gli è partito il WhatsApp che avvisa del richiamo.`,
+          fare:`Se non risponde neanche oggi si passa all'ultimo tentativo.${
+            c.ricontatto_il ? ' Era in agenda per ' + giornoLungo(c.ricontatto_il) + '.' : ''}` };
+  },
+
+  'Non raggiungibile': () => ({ classe:'chiuso',
+    testo:`Due squilli a vuoto in due giorni diversi: <b>archiviato</b>.`,
+    fare:`Non torna in lista e non va richiamato.` }),
+
+  'Da Ricontattare': c => ({ classe: inRitardo(c.ricontatto_il) ? 'urgente' : '',
+    testo:`Avete parlato${c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}
+      e vi siete dati un appuntamento telefonico.`,
+    fare: c.ricontatto_il
+      ? (inRitardo(c.ricontatto_il)
+          ? `<b>L'appuntamento era ${giornoLungo(c.ricontatto_il)} ed è passato.</b> Scusati e riparti da lì.`
+          : `Appuntamento per <b>${giornoLungo(c.ricontatto_il)}</b>.`)
+      : `La data del richiamo non è stata segnata: chiedila e mettila.` }),
+
+  'Ci pensa': c => ({ classe: inRitardo(c.ricontatto_il) ? 'urgente' : '',
+    testo:`Ha ascoltato tutto${c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}
+      e <b>non ha deciso</b>. Non ha detto di no: ha detto non adesso.`,
+    fare: c.ricontatto_il
+      ? `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`
+      : `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.` }),
+
+  'Promette Profilazione': c => ({ classe: promessaScaduta(c) ? 'urgente' : '',
+    testo:`Ha promesso di completare il profilo su MigaMATCH${c.ultima_chiamata_il ? ', il ' + dataOra(c.ultima_chiamata_il) : ''}.`,
+    fare: promessaScaduta(c)
+      ? `<b>La data promessa (${esc(dataImpegno(c) || '—')}) è passata e il profilo non risulta completato.</b>
+         È questo il motivo della chiamata.`
+      : `Ha tempo fino al <b>${esc(dataImpegno(c) || 'termine che non è stato segnato')}</b>.
+         Se lo completa prima, sparisce da qui da solo.` }),
+
+  'Profilato - Call back': c => ({
+    testo:`Si è profilato dopo una nostra chiamata${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}:
+      la promessa l'ha mantenuta.`,
+    fare:`Il profilo non si chiede più. Si chiama per il <b>feedback sui primi match</b>
+      e da lì si porta il discorso sul Forum.` }),
+
+  'Viene': c => ({ classe:'urgente',
+    testo:`Ha detto che <b>viene</b>, ma <b>non ha ancora pagato</b>.`,
+    fare:`Resta in lavorazione finché non compra: senza incasso il posto non è suo.${
+      c.ricontatto_il ? ' Richiamo fissato per ' + giornoLungo(c.ricontatto_il) + '.' : ''}` }),
+
+  'Non può venire': () => ({ classe:'chiuso',
+    testo:`Ha detto che il 17 ottobre <b>non può esserci</b>.`,
+    fare:`Lavorazione chiusa. Non è un no al metodo, è un no alla data.` }),
+
+  'Acquistato': () => ({ classe:'chiuso',
+    testo:`<b>Ha comprato il biglietto.</b>`,
+    fare:`Lavorazione chiusa. Se lo chiami è solo per la cortesia di benvenuto.` }),
+
+  'Non interessato': () => ({ classe:'chiuso',
+    testo:`Ha detto di <b>no</b>.`,
+    fare:`Resta negli archivi ma non si richiama.` }),
+
+  'Richiede disiscrizione': () => ({ classe:'chiuso',
+    testo:`Ha chiesto di <b>essere cancellato</b> dai nostri archivi.`,
+    fare:`Fuori dalla lista, e non ci rientra. Non va contattato su nessun canale.` }),
+
+  'Altro operatore': () => ({ classe:'chiuso',
+    testo:`Lo segue già <b>un altro consulente</b>.`,
+    fare:`Qui la lavorazione si chiude: coordinati con lui invece di richiamare.` }),
+
+  'Altro': () => ({
+    testo:`Situazione fuori dai casi previsti.`,
+    fare:`Quello che è successo sta nella nota qui sotto: leggila prima di comporre.` })
+};
+
+function situazione(c){
+  const esito = c.ultimo_esito || 'Da Contattare';
+  const f = SITUAZIONE[esito];
+  const base = f ? f(c) : { testo:`Ultimo esito: <b>${esc(esito)}</b>.` };
+  return { classe: base.classe || '', testo: base.testo, fare: base.fare || '' };
 }
 
 /* IN PENSIONE dal 24 agosto 2026. Sceglieva fra le tre varianti contestuali del
@@ -2396,10 +2628,16 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
   /* Sopra i 160 caratteri l'SMS diventa due messaggi: costa il doppio e arriva
      spezzato su certi telefoni. Il conto si vede mentre si scrive, perche' e'
      l'unico canale dove una parola in piu' si paga. */
+  /* Legge il campo direttamente e non da `testoScelto`: quella costante viene
+     inizializzata piu' sotto, e `ridisegna()` — che chiama questo contatore —
+     gira prima. Il risultato era un errore lanciato mentre si costruiva il
+     popup, quindi il popup non compariva affatto e il pulsante SMS sembrava
+     morto. Capitava solo all'SMS, perche' e' l'unico canale che conta i
+     caratteri. */
   function contaCaratteriSms(){
     const el = q('[data-conta-sms]');
     if(!el) return;
-    const n = testoScelto().length;
+    const n = (q('[data-testo]').value || '').trim().length;
     const segmenti = n <= 160 ? 1 : Math.ceil(n / 153);
     el.textContent = n + ' caratteri' + (segmenti > 1
       ? ` — sono ${segmenti} SMS: accorcia sotto i 160 se puoi` : ' su 160');
