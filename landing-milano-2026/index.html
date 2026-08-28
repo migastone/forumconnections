@@ -51,14 +51,20 @@ em{font-style:italic}
   letter-spacing:.14em;font-size:.76rem;color:var(--gold-dk)}
 .lead{font-size:1.18rem}
 
-/* ---------- Economy strip ---------- */
-.eco-strip{background:#0E1A3C;color:#fff;font-size:.85rem;padding:9px 0;
-  border-bottom:2px solid var(--gold)}
-.eco-strip .wrap{display:flex;gap:14px;align-items:center;justify-content:center;
+/* ---------- Economy strip ----------
+   Il giallo della barra e' lo stesso del logo (il JPG ha il fondo pieno):
+   cosi' l'immagine ci si appoggia sopra senza mostrare il suo rettangolo. */
+.eco-strip{background:#fce003;color:#14122B;font-size:.85rem;padding:7px 0;
+  border-bottom:2px solid rgba(0,0,0,.18)}
+.eco-strip .wrap{display:flex;gap:12px;align-items:center;justify-content:center;
   flex-wrap:wrap;text-align:center}
-.eco-strip b{color:var(--gold)}
-.eco-badge{border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:2px 12px;
-  font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.72rem}
+.eco-strip .dicitura{font-weight:700;letter-spacing:.01em}
+.eco-strip img{display:block;height:32px;width:auto;max-width:100%}
+@media(max-width:520px){
+  .eco-strip{font-size:.78rem}
+  .eco-strip .wrap{gap:7px}
+  .eco-strip img{height:24px}
+}
 
 /* ---------- Header / logo ---------- */
 .site-head{background:var(--navy);padding:16px 0;position:sticky;top:0;z-index:50;
@@ -307,8 +313,9 @@ footer a{color:#B9B3DA}
 <!-- ══════════ ECONOMY STRIP ══════════ -->
 <div class="eco-strip">
   <div class="wrap">
-    <span class="eco-badge">Media partner</span>
-    <span>In partnership editoriale esclusiva con <b>Economy</b> — il mensile che porta i suoi lettori imprenditori a questo tavolo.</span>
+    <span class="dicitura">In partnership editoriale con:</span>
+    <img src="assets/img/logo-economy-orizzontale.jpg"
+         alt="Economy — inserto de Il Sole 24 ORE" width="1376" height="217" loading="eager">
   </div>
 </div>
 
