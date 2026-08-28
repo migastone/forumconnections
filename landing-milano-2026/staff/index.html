@@ -335,7 +335,8 @@ async function controllaVersione(){
    una richiesta di cancellazione e toglie la persona dalla lista per sempre. */
 const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non raggiungibile','Da Ricontattare',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
-               'Non interessato','Richiede disiscrizione','Altro operatore','Altro'];
+               'Non interessato','Richiede disiscrizione','Altro operatore',
+               'Contatto Duplicato','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
@@ -346,7 +347,8 @@ const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','d
    «Da Ricontattare» sta qui fuori perche' dal modulo lo si sceglie dopo aver
    parlato; quando invece non risponde, ci si arriva dal pulsante rapido, che
    dichiara lui che non c'e' stata risposta. */
-const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Non raggiungibile','Altro operatore']);
+const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Non raggiungibile','Altro operatore',
+                                'Contatto Duplicato']);
 const haRisposto = esito => !SENZA_RISPOSTA.has(esito);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
@@ -397,6 +399,7 @@ const SPIEGA_ESITO = {
   'Non interessato':       'Ha detto di no. Resta in lista, in fondo e in grigio, ma non si richiama.',
   'Richiede disiscrizione':'Ha chiesto di essere cancellato: esce dalla lista e non ci rientra.',
   'Altro operatore':       'Lo segue già un altro consulente: qui la lavorazione si chiude.',
+  'Contatto Duplicato':    'La stessa persona è già in lista con un\u2019altra scheda. Si archivia qui e si lavora l\u2019altra: niente data, niente nota, salva e vai avanti.',
   'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo.',
   'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.'
 };
@@ -404,7 +407,8 @@ const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
-                           'Non raggiungibile','Non può venire','Altro operatore']);
+                           'Non raggiungibile','Non può venire','Altro operatore',
+                           'Contatto Duplicato']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 /* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
@@ -2124,6 +2128,10 @@ const SITUAZIONE = {
   'Altro operatore': () => ({ classe:'chiuso',
     testo:`Lo segue già <b>un altro consulente</b>.`,
     fare:`Qui la lavorazione si chiude: coordinati con lui invece di richiamare.` }),
+
+  'Contatto Duplicato': () => ({ classe:'chiuso',
+    testo:`Questa scheda è un <b>doppione</b>: la stessa persona è in lista anche altrove.`,
+    fare:`Archiviata. Quella buona è l'altra — se non l'hai già trovata, cercala per nome o per telefono.` }),
 
   'Altro': () => ({
     testo:`Situazione fuori dai casi previsti.`,
