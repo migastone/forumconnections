@@ -215,7 +215,7 @@ section{padding:66px 0}
 
 /* ---------- Pricing ---------- */
 .price-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  margin:32px 0}
+  margin:32px auto}
 .price{background:#fff;border:2px solid var(--line);border-radius:14px;padding:26px 22px;text-align:center}
 .price.on{border-color:var(--gold);box-shadow:0 12px 34px rgba(239,199,94,.3);position:relative}
 .price.on::after{content:'ATTIVO ORA';position:absolute;top:-12px;left:50%;transform:translateX(-50%);
@@ -231,7 +231,7 @@ section{padding:66px 0}
    vicini si annullano a vicenda. Il bordo doppio le da' l'aria del sigillo
    senza usare un'immagine. */
 .garanzia{background:var(--navy);color:#EDEBF7;border-radius:16px;padding:30px 28px;
-  margin:32px 0;box-shadow:0 18px 44px rgba(27,20,80,.28);
+  margin:32px auto;box-shadow:0 18px 44px rgba(27,20,80,.28);
   outline:2px solid var(--gold);outline-offset:-9px}
 .garanzia .sigillo{display:inline-block;background:var(--gold);color:#1A1330;
   font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
@@ -247,7 +247,7 @@ section{padding:66px 0}
   color:var(--gold);line-height:1;margin-bottom:7px}
 .garanzia .senza-attrito{margin:22px 0 0;padding-top:16px;border-top:1px solid rgba(239,199,94,.3);
   font-size:.93rem;color:#CFC9EC}
-.garanzia .senza-attrito b{color:#fff}
+.garanzia b,.garanzia strong{color:#fff}
 .garanzia .postilla{margin:10px 0 0;font-size:.8rem;color:#9E99C4}
 
 /* ---------- Speakers / partners ---------- */
@@ -862,9 +862,9 @@ footer a{color:#B9B3DA}
         <li><span class="n">3</span>Entro le <b>12.00</b> decidi. Se non ti ha convinto,
           vai in cassa e riprendi i tuoi soldi.</li>
       </ol>
-      <p class="senza-attrito"><b>Niente moduli, niente email, niente «ti facciamo sapere».</b>
-        Lo dici alla cassa e te ne vai col rimborso. Non ti chiediamo nemmeno il perché —
-        anche se, se ce lo dici, ci fai un favore.</p>
+      <p class="senza-attrito">Passi alla cassa ed <b>entro il lunedì dopo</b> hai il rimborso
+        sullo stesso metodo di pagamento con cui hai comprato il biglietto.
+        Non ti chiediamo nemmeno il perché — anche se, se ce lo dici, ci fai un favore.</p>
       <p class="senza-attrito"><b>Ce lo possiamo permettere perché in tre edizioni non è ancora
         successo che qualcuno volesse indietro i suoi soldi.</b> E se il 17 ottobre succede con te,
         vuol dire che il sistema non ha funzionato — e allora non è giusto che paghi tu.</p>
@@ -916,9 +916,10 @@ footer a{color:#B9B3DA}
         A quell'ora hai già fatto <strong>due dei sei round</strong> — due tavoli da otto composti dall'algoritmo,
         cioè 14 dei 42 incontri della giornata. Non stai giudicando una promessa: stai giudicando
         un terzo dell'evento che hai già vissuto.</p>
-      <p>Niente moduli e niente attese: lo dici alla cassa e te ne vai col rimborso. L'unica condizione
-        è l'orario — si chiede <strong>entro le 12.00, prima del pranzo</strong>, e chi lo richiede
-        lascia l'evento senza il pranzo.</p>
+      <p>Lo chiedi alla cassa ed <strong>entro il lunedì successivo</strong> ti arriva il rimborso
+        sullo stesso metodo di pagamento con cui hai comprato. L'unica condizione è l'orario —
+        si chiede <strong>entro le 12.00, prima del pranzo</strong>, e chi lo richiede lascia
+        l'evento senza il pranzo.</p>
       <p>Possiamo permettercelo perché <strong>in tre edizioni non è ancora successo che qualcuno
         volesse indietro i suoi soldi</strong>.</p>
     </details>
