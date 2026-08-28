@@ -30,6 +30,9 @@
   --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box}
+/* Le ancore interne (#biglietti, #tool) atterravano sotto la testata fissa:
+   questo tiene il titolo di sezione appena sotto il bordo. */
+html{scroll-padding-top:132px}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:var(--sans);color:var(--body);background:var(--paper);
   font-size:18px;line-height:1.65;-webkit-font-smoothing:antialiased}
@@ -61,14 +64,14 @@ em{font-style:italic}
 .eco-strip .dicitura{font-weight:700;letter-spacing:.01em}
 .eco-strip img{display:block;height:32px;width:auto;max-width:100%}
 @media(max-width:520px){
-  .eco-strip{font-size:.78rem}
-  .eco-strip .wrap{gap:7px}
-  .eco-strip img{height:24px}
+  .eco-strip{font-size:.72rem;padding:6px 0}
+  .eco-strip .wrap{gap:6px;flex-wrap:nowrap}
+  .eco-strip img{height:19px}
 }
 
 /* ---------- Header / logo ---------- */
-.site-head{background:var(--navy);padding:16px 0;position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.testata{position:sticky;top:0;z-index:50;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.site-head{background:var(--navy);padding:16px 0}
 .site-head .wrap{display:flex;align-items:center;justify-content:space-between;gap:18px}
 .logo{display:flex;align-items:center;gap:13px;text-decoration:none}
 .logo img{width:44px;height:44px;flex:none}
@@ -258,8 +261,6 @@ section{padding:66px 0}
 .sec-navy .sp .role{color:var(--gold)}
 .logos{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:center}
 .logos img{height:64px;width:auto;object-fit:contain;background:#fff;border-radius:8px;padding:8px}
-.press{display:flex;gap:34px;justify-content:center;align-items:center;flex-wrap:wrap;opacity:.85}
-.press img{height:34px;width:auto;filter:brightness(0) invert(1)}
 
 /* ---------- Program ---------- */
 .prog{list-style:none;padding:0;margin:0}
@@ -334,7 +335,8 @@ footer a{color:#B9B3DA}
 </head>
 <body>
 
-<!-- ══════════ ECONOMY STRIP ══════════ -->
+<!-- ══════════ TESTATA FISSA: barra Economy + menu ══════════ -->
+<div class="testata">
 <div class="eco-strip">
   <div class="wrap">
     <span class="dicitura">In partnership editoriale con:</span>
@@ -359,6 +361,7 @@ footer a{color:#B9B3DA}
     </div>
   </div>
 </header>
+</div><!-- /testata -->
 
 <!-- ══════════ HERO ══════════ -->
 <section class="hero" id="top">
@@ -590,13 +593,6 @@ footer a{color:#B9B3DA}
       </div>
     </div>
 
-    <div style="margin-top:44px;text-align:center">
-      <p class="kicker" style="color:var(--gold);margin-bottom:18px">Hanno parlato di noi</p>
-      <div class="press">
-        <img src="assets/img/forbes.png" alt="Forbes">
-        <img src="assets/img/millionaire.png" alt="Millionaire">
-      </div>
-    </div>
   </div>
 </section>
 
