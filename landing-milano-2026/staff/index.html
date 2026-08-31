@@ -194,6 +194,11 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .sosia .cand .btn{width:auto;padding:7px 14px;font-size:.85rem}
 .pill.no{background:#FDECEC;color:#98292E}
 .pill.si{background:#E2F1E8;color:#22603F}
+/* Il giorno della svolta la coda si dimezza. Senza una riga che lo dica,
+   chi apre la pagina pensa che si sia rotto qualcosa — ed e' gia' successo. */
+.fase{margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#EAF1FB;
+  border:1px solid #CFDEF4;font-size:.9rem;line-height:1.4;color:#24406B}
+.fase b{color:#16294A}
 .riga-email{margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem}
 .riga-email input{width:auto;min-width:230px;margin:0;padding:6px 9px}
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
@@ -270,6 +275,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   <main>
     <div id="target" class="target nascosto"></div>
     <details id="conversione" class="conv nascosto"></details>
+    <div id="fase" class="fase nascosto"></div>
     <p class="conteggio" id="conteggio">Carico…</p>
     <div id="lista"></div>
     <div style="text-align:center;margin-top:14px">
@@ -767,9 +773,26 @@ async function caricaCoda(azzera = false){
     $('#conteggio').textContent =
       `${d.totale.toLocaleString('it-IT')} contatti in coda${anchLiberi ? ' (i tuoi più quelli ancora liberi)' : ''}`
       + ` · mostrati ${Math.min((pagina+1)*50, d.totale)} · ${d.ms} ms`;
+    mostraFase(d.righe[0]?.fase_campagna);
     $('#lista').insertAdjacentHTML('beforeend', d.righe.map(riga).join(''));
     $('#altri').style.display = (pagina+1)*50 >= d.totale ? 'none' : '';
   }catch(e){ $('#conteggio').textContent = 'Errore: ' + e.message; }
+}
+
+/* Dal 1 settembre la coda non propone piu' chi deve ancora profilarsi e non
+   e' mai stato chiamato: la priorita' passa al biglietto. Chi ha una
+   lavorazione aperta resta, perche' lasciarlo a meta' sarebbe peggio. */
+function mostraFase(fase){
+  const el = $('#fase');
+  /* Con una pagina di risultati vuota la fase non arriva: meglio lasciare
+     l'avviso com'era che spegnerlo perché un filtro non ha trovato nulla. */
+  if(!fase) return;
+  if(fase !== 'settembre_biglietto'){ el.classList.add('nascosto'); return; }
+  el.classList.remove('nascosto');
+  el.innerHTML = `<b>Da settembre si vende il biglietto.</b> In coda ci sono i contatti
+    con la CTA Forum e tutte le lavorazioni ancora aperte — appuntamenti, «ci pensa»,
+    promesse di profilazione. <b>Chi deve ancora profilarsi e non e' mai stato chiamato
+    non compare piu'</b>: non e' sparito, e' in attesa di una fase successiva.`;
 }
 
 function riga(r){
