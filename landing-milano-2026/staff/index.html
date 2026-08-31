@@ -1054,6 +1054,10 @@ async function apriScheda(id){
      con lo stesso esito: prima la differenza la portava il nome dello stato. */
   c.tentativi_a_vuoto = storico.filter(x =>
     x.esito === 'Non risponde' || x.esito === 'Non raggiungibile').length;
+  /* Quante volte ha promesso: la prima e' la promessa, dalla seconda in poi
+     sono rinvii. Al secondo rinvio scaduto lo archivia il sistema di notte, e
+     la scheda deve poterlo dire prima che l'operatrice ne conceda un terzo. */
+  c.promesse_fatte = storico.filter(x => x.esito === 'Promette Profilazione').length;
   const msg = componiMessaggio(c);
   const obiettivo = obiettivoPer(c);
   /* la capacità si rilegge all'apertura della scheda: fra una chiamata e
@@ -1445,7 +1449,10 @@ async function apriScheda(id){
   /* Le date già prese si ritrovano nei campi: senza, riaprire una scheda e
      salvarla cancellava l'impegno preso alla telefonata precedente. */
   if(c.ricontatto_il) q('[data-ricontatto]').value = perInput(new Date(c.ricontatto_il));
-  if(giornoIso(c.profilazione_promessa_il)) q('[data-profilazione]').value = giornoIso(c.profilazione_promessa_il);
+  /* Se la promessa e' gia' scaduta rimetterci dentro la data vecchia non
+     serve a niente: si riparte da due giorni, che e' il rinvio concordato. */
+  if(promessaScaduta(c)) q('[data-profilazione]').value = fraDueGiorni();
+  else if(giornoIso(c.profilazione_promessa_il)) q('[data-profilazione]').value = giornoIso(c.profilazione_promessa_il);
 
   /* chi è maturo per il Forum ha già l'esito giusto pronto nel menu */
   if(c.pronto_per_forum) q('[data-esito]').value = 'Profilato - Call back';
@@ -1879,6 +1886,15 @@ function profilatoDopoLaChiamata(c){
   return new Date(c.profilato_il) >= new Date(c.ultima_chiamata_il);
 }
 
+/* Il rinvio concordato al telefono e' di due giorni, fine settimana escluso:
+   una promessa che scade di domenica non la guarda nessuno fino al lunedi'.
+   Torna gia' nel formato dell'input date, che vuole solo il giorno. */
+function fraDueGiorni(){
+  const d = prossimoGiornoLavorativo(prossimoGiornoLavorativo());
+  const z = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + z(d.getMonth()+1) + '-' + z(d.getDate());
+}
+
 function promessaScaduta(c){
   const g = giornoIso(c.profilazione_promessa_il);
   if(!c.promessa_aperta || !g) return false;
@@ -2091,13 +2107,25 @@ const SITUAZIONE = {
       ? `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`
       : `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.` }),
 
-  'Promette Profilazione': c => ({ classe: promessaScaduta(c) ? 'urgente' : '',
-    testo:`Ha promesso di completare il profilo su MigaMATCH${c.ultima_chiamata_il ? ', il ' + dataOra(c.ultima_chiamata_il) : ''}.`,
-    fare: promessaScaduta(c)
-      ? `<b>La data promessa (${esc(dataImpegno(c) || '—')}) è passata e il profilo non risulta completato.</b>
-         È questo il motivo della chiamata.`
-      : `Ha tempo fino al <b>${esc(dataImpegno(c) || 'termine che non è stato segnato')}</b>.
-         Se lo completa prima, sparisce da qui da solo.` }),
+  'Promette Profilazione': c => {
+    if(!promessaScaduta(c)) return {
+      testo:`Ha promesso di completare il profilo su MigaMATCH${c.ultima_chiamata_il ? ', il ' + dataOra(c.ultima_chiamata_il) : ''}.`,
+      fare:`Ha tempo fino al <b>${esc(dataImpegno(c) || 'termine che non è stato segnato')}</b>.
+        Se lo completa prima, sparisce da qui da solo.` };
+    /* Gia' rinviata una volta: la prossima scadenza non torna piu' in mano a
+       nessuno, la chiude il sistema di notte. Dirlo cambia come si telefona. */
+    const ultima = (c.promesse_fatte || 1) >= 2;
+    return { classe:'urgente',
+      testo:`<b>La data promessa (${esc(dataImpegno(c) || '—')}) è passata</b> e il profilo non risulta
+        completato.${ultima ? ' La promessa era <b>già stata rinviata una volta</b>.' : ''}`,
+      fare:`La chiamata ha tre uscite, e una sola è un rinvio:<br>
+        · <b>dice che lo fa</b> → resta «Promette Profilazione» con la data fra due giorni, già pronta qui sotto;<br>
+        · <b>dice di no</b> → <b>Richiede disiscrizione</b>, e lo togliamo dalla lista;<br>
+        · <b>non lo trovi</b> → mandagli il messaggio qui accanto e rinvia di due giorni.<br>
+        ${ultima
+          ? 'Attenzione: questo era l\'ultimo giro. Se la data passa ancora senza profilo, stanotte il sistema lo archivia da solo come «Non si è profilato».'
+          : 'Se anche il prossimo rinvio scade a vuoto, lo archivia il sistema: non te lo ritrovi in coda.'}` };
+  },
 
   'Profilato - Call back': c => ({
     testo:`Si è profilato dopo una nostra chiamata${c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}:
