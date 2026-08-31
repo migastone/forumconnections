@@ -396,7 +396,7 @@ const SPIEGA_ESITO = {
   'Da Ricontattare':       'Avete parlato e vi siete dati un appuntamento. Se invece il telefono ha squillato a vuoto, chiudi qui e usa il pulsante «Non risponde».',
   'Non risponde':          'Primo squillo a vuoto: si riprova il giorno dopo, alla data qui sotto.',
   'Non raggiungibile':     'Secondo squillo a vuoto: il contatto si archivia e non torna in lista.',
-  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Si risente alla data qui sotto, senza impegni scritti.',
+  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Sul biglietto la data qui sotto è la scadenza dei tre mesi in regalo: la scheda la propone già a tre giorni lavorativi.',
   'Promette Profilazione': 'Ha promesso di completare il profilo entro la data qui sotto. È quella a farlo tornare in cima.',
   'Profilato - Call back': 'Si è profilato dopo una nostra chiamata: si richiama per il feedback sui primi match.',
   'Viene':                 'Ha detto che viene ma non ha ancora pagato: resta in lavorazione finché non compra.',
@@ -1459,8 +1459,13 @@ async function apriScheda(id){
 
     /* Un valore di partenza c'è sempre: il primo giorno lavorativo utile alle 9.
        Si può spostare, ed è quella la data in cui il contatto risale in cima. */
-    if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value)
-      q('[data-ricontatto]').value = perInput(prossimoGiornoLavorativo());
+    if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value){
+      /* «Ci pensa» su chi deve comprare il biglietto non e' un richiamo
+         qualunque: i tre mesi di MigaMATCH valgono tre giorni lavorativi, e
+         la data che torna deve essere quella, non il giorno dopo. */
+      const quanti = (esito === 'Ci pensa' && obiettivoPer(c) === 'forum') ? 3 : 1;
+      q('[data-ricontatto]').value = perInput(giorniLavorativi(quanti));
+    }
 
 
   };
@@ -1909,13 +1914,26 @@ function profilatoDopoLaChiamata(c){
   return new Date(c.profilato_il) >= new Date(c.ultima_chiamata_il);
 }
 
-/* Il rinvio concordato al telefono e' di due giorni, fine settimana escluso:
-   una promessa che scade di domenica non la guarda nessuno fino al lunedi'.
-   Torna gia' nel formato dell'input date, che vuole solo il giorno. */
+/* Sabato e domenica non contano mai: un impegno che scade di domenica non lo
+   guarda nessuno fino al lunedi', e la scadenza perde il suo senso. */
+function giorniLavorativi(quanti){
+  let d = new Date();
+  for(let i = 0; i < quanti; i++) d = prossimoGiornoLavorativo(d);
+  return d;
+}
+
+/* Il rinvio della promessa e' di due giorni, nel formato dell'input date. */
 function fraDueGiorni(){
-  const d = prossimoGiornoLavorativo(prossimoGiornoLavorativo());
+  const d = giorniLavorativi(2);
   const z = n => String(n).padStart(2,'0');
   return d.getFullYear() + '-' + z(d.getMonth()+1) + '-' + z(d.getDate());
+}
+
+/* La scadenza del ricontatto e' arrivata: oggi o gia' passata. */
+function scadenzaArrivata(c){
+  if(!c.ricontatto_il) return false;
+  const fine = new Date(); fine.setHours(23,59,59,999);
+  return new Date(c.ricontatto_il) <= fine;
 }
 
 function promessaScaduta(c){
@@ -2123,12 +2141,22 @@ const SITUAZIONE = {
           : `Appuntamento per <b>${giornoLungo(c.ricontatto_il)}</b>.`)
       : `La data del richiamo non è stata segnata: chiedila e mettila.` }),
 
-  'Ci pensa': c => ({ classe: inRitardo(c.ricontatto_il) ? 'urgente' : '',
-    testo:`Ha ascoltato tutto${c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}
-      e <b>non ha deciso</b>. Non ha detto di no: ha detto non adesso.`,
-    fare: c.ricontatto_il
-      ? `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`
-      : `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.` }),
+  'Ci pensa': c => {
+    const forum = obiettivoPer(c) === 'forum';
+    const oggi = scadenzaArrivata(c);
+    return { classe: oggi ? 'urgente' : '',
+      testo:`Ha ascoltato tutto${c.ultima_chiamata_il ? ' il ' + dataOra(c.ultima_chiamata_il) : ''}
+        e <b>non ha deciso</b>. Non ha detto di no: ha detto non adesso.`,
+      fare: !c.ricontatto_il
+        ? `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.`
+        : (forum && oggi
+            ? `<b>Oggi è l'ultimo giorno dei tre mesi in regalo.</b> Mandagli il messaggio qui accanto:
+               dice che scade, e gli lascia l'uscita se non se la sente.`
+            : forum
+              ? `I tre mesi in regalo scadono <b>${giornoLungo(c.ricontatto_il)}</b>: quel giorno torna in
+                 cima e il pulsante propone il messaggio della scadenza.`
+              : `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`) };
+  },
 
   'Promette Profilazione': c => {
     if(!promessaScaduta(c)) return {
@@ -2340,6 +2368,18 @@ Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.
      ricordare male. */
   /* Ci sta pensando: non ha promesso niente, e infatti qui non si mette per
      iscritto nessun impegno. Si conferma solo quando ci si risente. */
+  /* Il terzo giorno: e' l'ultimo in cui il regalo vale. Dice la scadenza,
+     ricorda cosa perde, e offre l'uscita pulita — «chiudo qui» invece di
+     «archivio la tua anagrafica», che suona come una minaccia d'ufficio. */
+  ci_pensa_scade: p =>
+`Ciao ${p.nome}, sono ${p.op}.
+
+Oggi scade quello che ti avevo tenuto da parte: *tre mesi di MigaMATCH in regalo* insieme al biglietto. Sono almeno *nove contatti in target* scelti dall'algoritmo — commercialisti, consulenti, avvocati, professionisti che con le aziende che cerchi tu ci parlano tutti i giorni.
+
+Non vedo ancora la tua iscrizione. Se oggi non te la senti chiudo qui e non ti disturbo più, ci mancherebbe: il biglietto resta su www.forumconnections.com quando vuoi, solo senza il regalo.
+
+Se invece lo vuoi, questo è il tuo link — prezzo di oggi ${p.prezzo}: ${p.link}`,
+
   ci_pensa: p =>
 `Ciao ${p.nome}, sono ${p.op} di ${p.brand} — grazie per il tempo di prima.
 
@@ -2406,6 +2446,7 @@ const OGGETTI = {
   bene_forum: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
+  ci_pensa_scade: n => `${n}, oggi scadono i tre mesi in regalo`,
   secondo_giorno: n => `${n}, ho provato a cercarti anche oggi`,
   sms_primo: n => `${n}, ti ho cercato`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
@@ -2470,6 +2511,11 @@ function componiMessaggio(c, operatore, opzioni){
   else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
   /* «Ci pensa» non è un impegno: mandargli il recap di una promessa che non ha
      fatto è il modo migliore per irrigidirlo alla telefonata dopo. */
+  /* Il giorno in cui il regalo scade non serve il «ci risentiamo»: serve il
+     messaggio che dice che oggi e' l'ultimo giorno. Solo per il biglietto —
+     a chi deve ancora profilarsi i tre mesi non si regalano. */
+  else if(esito === 'Ci pensa' && obiettivo === 'forum' && scadenzaArrivata(c)){
+                                    quale = 'ci_pensa_scade';         tipo = 'promemoria'; }
   else if(esito === 'Ci pensa'){    quale = 'ci_pensa';               tipo = 'economy'; }
   /* Segnato a mano «Non risponde»: quale dei due messaggi tocca dipende da
      quante volte il telefono ha gia' squillato a vuoto, non dall'esito — che
@@ -2568,6 +2614,7 @@ const COSA_PARTE = {
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
   ci_pensa:           'ci risentiamo, con Economy',
+  ci_pensa_scade:     'oggi scade il regalo',
   secondo_giorno:     'ultimo tentativo',
   solo_economy:       'solo Economy',
   email_promesso:     'riassunto e offerta'
