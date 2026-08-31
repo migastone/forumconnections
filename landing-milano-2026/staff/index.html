@@ -336,7 +336,7 @@ async function controllaVersione(){
 const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non raggiungibile','Da Ricontattare',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
                'Non interessato','Richiede disiscrizione','Altro operatore',
-               'Contatto Duplicato','Altro'];
+               'Contatto Duplicato','Non si è profilato','Altro'];
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
@@ -348,7 +348,7 @@ const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','d
    parlato; quando invece non risponde, ci si arriva dal pulsante rapido, che
    dichiara lui che non c'e' stata risposta. */
 const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Non raggiungibile','Altro operatore',
-                                'Contatto Duplicato']);
+                                'Contatto Duplicato','Non si è profilato']);
 const haRisposto = esito => !SENZA_RISPOSTA.has(esito);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
@@ -360,7 +360,7 @@ const ANDATA_BENE = new Set(['Ci pensa','Viene','Promette Profilazione',
    averle nel menu è solo un modo per sbagliare. */
 const ESITI_FUORI_CONTESTO = {
   profilazione: new Set(['Viene','Non può venire','Acquistato']),
-  forum:        new Set(['Profilato - Call back'])
+  forum:        new Set(['Profilato - Call back','Non si è profilato'])
 };
 
 /* Quale data serve per quale esito, e se è obbligatoria.
@@ -399,6 +399,7 @@ const SPIEGA_ESITO = {
   'Non interessato':       'Ha detto di no. Resta in lista, in fondo e in grigio, ma non si richiama.',
   'Richiede disiscrizione':'Ha chiesto di essere cancellato: esce dalla lista e non ci rientra.',
   'Altro operatore':       'Lo segue già un altro consulente: qui la lavorazione si chiude.',
+  'Non si è profilato':    'Aveva promesso e non l\u2019ha fatto. Chiude la lavorazione di adesso, ma resta in archivio: è gente da riprendere più avanti, non gente da buttare.',
   'Contatto Duplicato':    'La stessa persona è già in lista con un\u2019altra scheda. Si archivia qui e si lavora l\u2019altra: niente data, niente nota, salva e vai avanti.',
   'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo.',
   'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.'
@@ -408,7 +409,7 @@ const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
                            'Non raggiungibile','Non può venire','Altro operatore',
-                           'Contatto Duplicato']);
+                           'Contatto Duplicato','Non si è profilato']);
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 /* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
@@ -2129,6 +2130,10 @@ const SITUAZIONE = {
     testo:`Lo segue già <b>un altro consulente</b>.`,
     fare:`Qui la lavorazione si chiude: coordinati con lui invece di richiamare.` }),
 
+  'Non si è profilato': c => ({ classe:'chiuso',
+    testo:`Aveva promesso di completare il profilo${c.profilazione_promessa_il ? ' entro il ' + esc(dataImpegno(c, 'Promette Profilazione') || '') : ''} e <b>non l'ha fatto</b>.`,
+    fare:`Lavorazione chiusa, ma <b>resta in archivio</b>: quando riapriamo il funnel è fra i primi da risentire.` }),
+
   'Contatto Duplicato': () => ({ classe:'chiuso',
     testo:`Questa scheda è un <b>doppione</b>: la stessa persona è in lista anche altrove.`,
     fare:`Archiviata. Quella buona è l'altra — se non l'hai già trovata, cercala per nome o per telefono.` }),
@@ -2227,6 +2232,25 @@ E il regalo di cui ti parlavo: la copia di Economy di agosto, a pagina 22 ci sia
 P.S. Il 17 ottobre a Milano abbiamo il Forum Connections, la giornata dal vivo. Non è per adesso: ne riparliamo dopo che hai fatto il primo match.
 
 A presto!`,
+
+  /* La promessa e' scaduta e il profilo non risulta completato. Non e' un
+     sollecito: dice che abbiamo capito, spiega perche' quel passaggio conta,
+     e lascia il link senza chiedere niente in cambio. Chi lo riceve o si
+     profila o resta dov'e', e in tutti e due i casi la lavorazione e' finita. */
+  promessa_scaduta: p =>
+`Ciao ${p.nome}, ti ho cercato al telefono ma immagino tu sia nel pieno del lavoro.
+
+Ti scrivo al volo qui: l'ultima volta che ci siamo sentiti avevi confermato la volontà di completare il tuo profilo in MigaMATCH.
+
+Come sai, per noi quel passaggio non è una formalità noiosa, ma il filtro principale per proteggere la rete e garantire a tutti gli iscritti di interagire solo con professionisti di parola, che fanno azione e portano vero valore.
+
+Visto il silenzio, capisco che in questo momento tu abbia priorità diverse e non riesca a dedicarci i 3 minuti necessari.
+
+Ti lascio comunque il link di accesso qui sotto per comodità:
+${p.linkProfilo}
+
+A presto
+${p.op}`,
 
   bene_forum: p =>
 `Ciao ${p.nome}, grazie della chiacchierata — ${p.op} di ${p.brand}.
@@ -2327,6 +2351,7 @@ const OGGETTI = {
   quattro_c: n => `${n}, il 17 ottobre a Milano, dal vivo`,
   email_promesso: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
   bene_profilazione: n => `${n}, il riassunto della nostra telefonata`,
+  promessa_scaduta: n => `${n}, il link del profilo — te lo lascio qui`,
   bene_forum: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
@@ -2372,6 +2397,11 @@ function componiMessaggio(c, operatore, opzioni){
   /* chi ha detto «vengo» e non ha ancora pagato: via email va il riassunto
      lungo, quello che mette per iscritto evento, offerta e scadenza. */
   else if(o.canale === 'email' && c.promesso_non_pagato){ quale = 'email_promesso'; tipo = 'recap'; }
+  /* La promessa e' scaduta e il profilo non risulta ancora completato: quello
+     che serve non e' il recap di un impegno preso, e' il messaggio che chiude.
+     Va prima di ANDATA_BENE, dove «Promette Profilazione» ricadrebbe. */
+  else if(esito === 'Promette Profilazione' && promessaScaduta(c)){
+                                    quale = 'promessa_scaduta';       tipo = 'recap'; }
   /* «Ricontatto» sta dentro ANDATA_BENE perché la telefonata ha avuto risposta,
      ma non è un impegno preso: va prima, o si prenderebbe il recap sbagliato. */
   /* «Da Ricontattare» dopo una risposta e' un appuntamento preso; senza
@@ -2483,6 +2513,7 @@ function perchePuoMancare(m){
 const COSA_PARTE = {
   benvenuto_acquisto: 'benvenuto e istruzioni',
   bene_profilazione:  'recap e link del profilo',
+  promessa_scaduta:   'ultimo messaggio, promessa scaduta',
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
   ci_pensa:           'ci risentiamo, con Economy',
