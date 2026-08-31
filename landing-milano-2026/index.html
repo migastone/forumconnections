@@ -856,15 +856,15 @@ footer a{color:#B9B3DA}
     </div>
 
     <div class="price-grid narrow">
-      <div class="price on">
+      <div class="price" data-fino="2026-08-31">
         <span class="amt">159 €</span>
         <p class="when">Entro il <strong>31 agosto 2026</strong><br>pranzo incluso</p>
       </div>
-      <div class="price">
+      <div class="price on" data-fino="2026-09-30">
         <span class="amt">179 €</span>
         <p class="when">Entro il <strong>30 settembre 2026</strong><br>pranzo incluso</p>
       </div>
-      <div class="price">
+      <div class="price" data-fino="2026-10-17">
         <span class="amt">199 €</span>
         <p class="when">Prezzo pieno<br>pranzo incluso</p>
       </div>
@@ -895,7 +895,7 @@ footer a{color:#B9B3DA}
 
     <div class="cta-block">
       <a href="https://auto.migamatch.com/shop?sku=MM_FORUM_MI_20261017" class="btn big" data-cta="checkout">
-        SÌ, VOGLIO IL MIO POSTO A 159 € →
+        SÌ, VOGLIO IL MIO POSTO A <span data-prezzo>179 €</span> →
       </a>
       <p class="btn-sub"><strong>Matchato o rimborsato: entro le 12.00 del 17 ottobre riprendi i tuoi soldi</strong><br>Pranzo incluso · 35 incontri garantiti · App MigaMATCH inclusa<br>
 <span style="font-size:.78rem">Vendita riservata a titolari di partita IVA. Se sei dipendente puoi indicare la partita IVA dell'azienda per cui lavori.</span></p>
@@ -993,7 +993,7 @@ footer a{color:#B9B3DA}
     </details>
 
     <details>
-      <summary>159 € più il sabato. Ne vale la pena?</summary>
+      <summary><span data-prezzo>179 €</span> più il sabato. Ne vale la pena?</summary>
       <p>Fai il conto al contrario: quanto ti costa oggi un lead qualificato? E quanti ne generi
         in una giornata di lavoro normale? Qui parliamo di 35 incontri selezionati algoritmicamente,
         pranzo incluso, formazione inclusa, app inclusa. Se anche uno solo
@@ -1065,7 +1065,7 @@ footer a{color:#B9B3DA}
 
     <div class="cta-block">
       <a href="https://auto.migamatch.com/shop?sku=MM_FORUM_MI_20261017" class="btn big" data-cta="checkout">
-        PRENDI IL TUO POSTO — 159 € →
+        PRENDI IL TUO POSTO — <span data-prezzo>179 €</span> →
       </a>
       <p class="btn-sub" style="color:#A9A3CE"><strong style="color:var(--gold)">Matchato o rimborsato: entro le 12.00 del 17 ottobre riprendi i tuoi soldi</strong><br>250 posti · pranzo incluso<br><span style="font-size:.78rem">Vendita riservata a titolari di partita IVA. Se sei dipendente puoi indicare la partita IVA dell'azienda per cui lavori.</span></p>
     </div>
@@ -1124,12 +1124,39 @@ footer a{color:#B9B3DA}
 <div class="sticky" id="sticky">
   <div class="wrap">
     <div class="txt">17 ottobre · Milano — <b id="sticky-cd">—</b> al Forum</div>
-    <a href="#biglietti" class="btn sm">Prendi il posto — 159 €</a>
+    <a href="#biglietti" class="btn sm">Prendi il posto — <span data-prezzo>179 €</span></a>
   </div>
 </div>
 
 <script src="assets/dati-rete.js"></script>
 <script>
+/* ---------- LISTINO ----------
+   Il prezzo compariva scritto a mano in cinque punti: pulsanti, barra in
+   basso, FAQ e la scheda «attivo ora». Ogni scaglione voleva qualcuno che si
+   ricordasse di cambiarli tutti nella stessa notte, e bastava dimenticarne
+   uno per mostrare una cifra e incassarne un'altra. Adesso lo decide la data.
+   Nel codice resta scritto il prezzo di settembre: se il JavaScript non gira,
+   quello e' giusto per trenta giorni su trentuno. */
+const LISTINO = [
+  { fino: '2026-08-31', prezzo: '159 €' },
+  { fino: '2026-09-30', prezzo: '179 €' },
+  { fino: '2026-10-17', prezzo: '199 €' }
+];
+
+function scaglioneDiOggi(){
+  /* Confronto fra stringhe YYYY-MM-DD: niente fusi orari, niente sorprese
+     alle due di notte. */
+  const oggi = new Date().toLocaleDateString('sv-SE');
+  return LISTINO.find(r => oggi <= r.fino) || LISTINO[LISTINO.length - 1];
+}
+
+(function prezzoDelGiorno(){
+  const attivo = scaglioneDiOggi();
+  document.querySelectorAll('[data-prezzo]').forEach(e => e.textContent = attivo.prezzo);
+  document.querySelectorAll('.price[data-fino]').forEach(e =>
+    e.classList.toggle('on', e.dataset.fino === attivo.fino));
+})();
+
 /* ---------- COUNTDOWN ---------- */
 const TARGET = new Date('2026-10-17T09:00:00+02:00').getTime();
 function tick(){
