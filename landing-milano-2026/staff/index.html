@@ -215,6 +215,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .pill.cta-prof{background:#EDE7FB;color:#4B2E8A}
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
+.pill.caldo{background:#FDEBE4;color:#9A3B12}
 .campo-chiave{border:2px solid var(--gold);border-radius:10px;padding:10px;background:#FFFCF3}
 .campo-chiave label{color:var(--gold-dk)}
 .campo-chiave .serve{font-size:.76rem;color:var(--gold-dk);margin-top:4px;font-weight:700}
@@ -817,6 +818,8 @@ function riga(r){
         ${profiloAMeta(r) ? '<span class="pill no" title="Ha aperto la profilazione senza finirla">profilo a metà</span>' : ''}
         <span class="pill ${obiettivoPer(r)==='profilazione'?'cta-prof':'cta-forum'}">${obiettivoPer(r)==='profilazione'?'profilazione':'Forum'}</span>
         ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}
+        ${r.caldo ? `<span class="pill caldo" title="Entrato in piattaforma negli ultimi 60 giorni e dà 4 o 5 stelle agli incontri fatti">🔥 caldo${
+          r.caldo_media ? ' · ' + r.caldo_media : ''}</span>` : ''}
         ${sosiaNoti.has(r.id) ? `<span class="pill no" title="Su MigaMATCH c'è un'anagrafica con lo stesso nome ma un'altra email">⚠ forse già iscritto${
           sosiaNoti.get(r.id).profilato ? ' e profilato' : ''}</span>` : ''}</div>
       <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
@@ -2085,7 +2088,7 @@ function bloccoAttivita(c){
   const stelle = voti ? '★'.repeat(Math.round(Number(a.media_feedback))) : '';
 
   return `<div class="uso${mai ? ' freddo' : ''}">
-    <h4>${titolo}</h4>
+    <h4>${titolo}${c.caldo ? ' <span class="pill caldo">🔥 in cima alla coda</span>' : ''}</h4>
     <ul>
       <li><span class="ico">${mai ? '🚪' : '🔑'}</span><span>${mai
         ? `Ha l'account ma <b>non è mai entrato</b>.`
@@ -2097,7 +2100,9 @@ function bloccoAttivita(c){
             ? `<b>${a.match_totali} match</b> ricevuti, <b>${a.match_conclusi}</b> portati a termine.`
             : `<b>${a.match_totali} match</b> ricevuti e <b>nessuno</b> portato a termine.`)}</span></li>
       ${a.feedback_dati ? `<li><span class="ico">⭐</span><span>Ha dato <b>${a.feedback_dati}</b>
-        feedback, media <b>${a.media_feedback}</b> su 5 <span class="stelle">${stelle}</span>.</span></li>`
+        feedback sugli incontri fatti, media <b>${a.media_feedback}</b> su 5
+        <span class="stelle">${stelle}</span>.${c.caldo ? ` <b>È per questo che sta in cima:</b>
+        la piattaforma la usa e ne è contento — non devi convincerlo che funziona.` : ''}</span></li>`
         : (a.match_conclusi ? `<li class="freddo"><span class="ico">⭐</span><span>Non ha mai dato
             un voto, pur avendo chiuso dei match.</span></li>` : '')}
     </ul>
