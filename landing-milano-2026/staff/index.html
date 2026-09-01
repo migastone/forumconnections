@@ -2063,6 +2063,29 @@ function edizioneForum(c){
 const unisci = v => v.length < 2 ? (v[0] || '')
   : v.slice(0, -1).join(', ') + ' e ' + v[v.length - 1];
 
+/* Paga o no. «Starter» e' attivo su quasi tutti ma costa zero: chiamarlo
+   abbonamento farebbe credere di avere davanti un cliente in nove casi su
+   dieci, e cambierebbe il tono della telefonata nel modo sbagliato. */
+function rigaAbbonamento(c){
+  const b = c.abbonamento;
+  if(!b || !b.piano) return '';
+  const prezzo = Number(b.prezzo || 0);
+  const quando = { monthly:'al mese', yearly:"all'anno", lifetime:'una tantum' }[b.periodo] || '';
+
+  if(b.pagante) return `<li><span class="ico">💳</span><span><b>Cliente a pagamento</b>:
+    piano <b>${esc(b.piano)}</b>, ${prezzo.toLocaleString('it-IT',{minimumFractionDigits:2})} € ${quando}.${
+    b.disdetto ? ` <b>Ha però disdetto</b>${b.scade_il ? `: resta attivo fino al ${
+      new Date(b.scade_il).toLocaleDateString('it-IT',{day:'numeric',month:'long'})}` : ''}.
+      Prima di vendergli un biglietto conviene capire perché se ne stava andando.` : ''}</span></li>`;
+
+  if(prezzo > 0) return `<li class="freddo"><span class="ico">💳</span><span>
+    <b>Ha pagato in passato</b> — piano ${esc(b.piano)}, adesso ${esc(b.stato === 'expired' ? 'scaduto' : 'disdetto')}.
+    Il prodotto lo conosce già: chiedigli perché ha smesso prima di proporgli altro.</span></li>`;
+
+  return `<li class="freddo"><span class="ico">🆓</span><span>Piano <b>${esc(b.piano)}</b>,
+    gratuito: <b>non è un cliente a pagamento</b>.</span></li>`;
+}
+
 /* Quanto lontano e' l'ultimo accesso, detto come lo direbbe una persona. */
 function daQuando(v){
   if(!v) return null;
@@ -2104,6 +2127,7 @@ function bloccoAttivita(c){
         : (a.match_conclusi
             ? `<b>${a.match_totali} match</b> ricevuti, <b>${a.match_conclusi}</b> portati a termine.`
             : `<b>${a.match_totali} match</b> ricevuti e <b>nessuno</b> portato a termine.`)}</span></li>
+      ${rigaAbbonamento(c)}
       ${a.feedback_dati ? `<li><span class="ico">⭐</span><span>Ha dato <b>${a.feedback_dati}</b>
         feedback sugli incontri fatti, media <b>${a.media_feedback}</b> su 5
         <span class="stelle">${stelle}</span>.${c.caldo ? ` <b>È per questo che sta in cima:</b>
