@@ -170,6 +170,17 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
    andava ricostruita a mente mentre il telefono squillava. */
 .origine{margin:0 0 12px;padding:11px 13px;border-radius:10px;
   background:#F1EFFA;border:1px solid #DBD5F0}
+.uso{margin:0 0 12px;padding:11px 13px;border-radius:10px;
+  background:#EAF6F0;border:1px solid #C6E4D5}
+.uso h4{margin:0 0 7px;font-size:.7rem;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:#2C6B4C}
+.uso ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.uso li{display:flex;gap:9px;align-items:flex-start;font-size:.91rem;line-height:1.38}
+.uso li.freddo{color:var(--tenue)}
+.uso p{margin:0;font-size:.91rem;line-height:1.38}
+.uso.freddo{background:#F5F4F8;border-color:var(--bordo)}
+.uso.freddo h4{color:var(--tenue)}
+.uso .stelle{color:var(--gold-dk);letter-spacing:.06em}
 .origine h4,.punto h4{margin:0 0 7px;font-size:.7rem;font-weight:800;
   letter-spacing:.09em;text-transform:uppercase;color:#5B4E97}
 .origine ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
@@ -1121,6 +1132,8 @@ async function apriScheda(id){
             riconoscibile: apri la chiamata senza dare per scontato che ci conosca.</span></li></ul>
         </div>`; })()}
 
+        ${bloccoAttivita(c)}
+
         ${profilatoDopoLaChiamata(c) ? `<div class="fatta">✓ <b>Si è profilato dopo la nostra chiamata</b>${
            c.profilato_il ? ', il ' + dataOra(c.profilato_il) : ''}.${
            c.ultimo_esito === 'Promette Profilazione' ? ' Promessa mantenuta.' : ''}
@@ -2041,6 +2054,53 @@ function edizioneForum(c){
 /* Elenco leggibile: «Firenze e Rimini», non «Firenze, Rimini». */
 const unisci = v => v.length < 2 ? (v[0] || '')
   : v.slice(0, -1).join(', ') + ' e ' + v[v.length - 1];
+
+/* Quanto lontano e' l'ultimo accesso, detto come lo direbbe una persona. */
+function daQuando(v){
+  if(!v) return null;
+  const giorni = Math.floor((Date.now() - new Date(v)) / 864e5);
+  if(giorni <= 0) return 'oggi';
+  if(giorni === 1) return 'ieri';
+  if(giorni < 30)  return giorni + ' giorni fa';
+  if(giorni < 60)  return 'un mese fa';
+  return Math.floor(giorni / 30) + ' mesi fa';
+}
+
+/* Come usa la piattaforma. E' la domanda che le setter facevano a mano prima
+   di ogni telefonata, e senza risposta si finisce per chiedere «hai provato
+   l'app?» a chi la usa da aprile — oppure per dare per scontato che l'abbia
+   aperta chi non ci e' mai entrato. */
+function bloccoAttivita(c){
+  const a = c.attivita;
+  if(!c.connector_uid) return `<div class="uso freddo">
+    <h4>Sulla piattaforma</h4>
+    <p>Non ha un account MigaMATCH collegato: non c'è niente da guardare, e
+      quello che sai di lui è solo quello che c'è scritto qui sopra.</p></div>`;
+  if(!a) return '';
+
+  const mai = !a.primo_accesso;
+  const voti = a.media_feedback !== null && a.media_feedback !== undefined;
+  const stelle = voti ? '★'.repeat(Math.round(Number(a.media_feedback))) : '';
+
+  return `<div class="uso${mai ? ' freddo' : ''}">
+    <h4>Sulla piattaforma</h4>
+    <ul>
+      <li><span class="ico">${mai ? '🚪' : '🔑'}</span><span>${mai
+        ? `Ha l'account ma <b>non è mai entrato</b>.`
+        : `Ultimo accesso <b>${daQuando(a.ultimo_accesso)}</b>, il ${dataOra(a.ultimo_accesso)}.
+           È entrato la prima volta ${daQuando(a.primo_accesso)}.`}</span></li>
+      <li><span class="ico">🤝</span><span>${!a.match_totali
+        ? `<b>Nessun match</b> ricevuto finora.`
+        : (a.match_conclusi
+            ? `<b>${a.match_totali} match</b> ricevuti, <b>${a.match_conclusi}</b> portati a termine.`
+            : `<b>${a.match_totali} match</b> ricevuti e <b>nessuno</b> portato a termine.`)}</span></li>
+      ${a.feedback_dati ? `<li><span class="ico">⭐</span><span>Ha dato <b>${a.feedback_dati}</b>
+        feedback, media <b>${a.media_feedback}</b> su 5 <span class="stelle">${stelle}</span>.</span></li>`
+        : (a.match_conclusi ? `<li class="freddo"><span class="ico">⭐</span><span>Non ha mai dato
+            un voto, pur avendo chiuso dei match.</span></li>` : '')}
+    </ul>
+  </div>`;
+}
 
 /* Da dove ci conosce, in frasi intere. Le fonti erano contate a numero
    («5 fonti»): un numero che non dice ne' quali ne' quando, e la setter
