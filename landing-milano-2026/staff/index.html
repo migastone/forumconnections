@@ -2072,8 +2072,10 @@ function daQuando(v){
    aperta chi non ci e' mai entrato. */
 function bloccoAttivita(c){
   const a = c.attivita;
+  const nome = (c.nome || '').trim().split(/\s+/)[0];
+  const titolo = nome ? `Come ${esc(nome)} usa MigaMATCH` : 'Come usa MigaMATCH';
   if(!c.connector_uid) return `<div class="uso freddo">
-    <h4>Sulla piattaforma</h4>
+    <h4>${titolo}</h4>
     <p>Non ha un account MigaMATCH collegato: non c'è niente da guardare, e
       quello che sai di lui è solo quello che c'è scritto qui sopra.</p></div>`;
   if(!a) return '';
@@ -2083,7 +2085,7 @@ function bloccoAttivita(c){
   const stelle = voti ? '★'.repeat(Math.round(Number(a.media_feedback))) : '';
 
   return `<div class="uso${mai ? ' freddo' : ''}">
-    <h4>Sulla piattaforma</h4>
+    <h4>${titolo}</h4>
     <ul>
       <li><span class="ico">${mai ? '🚪' : '🔑'}</span><span>${mai
         ? `Ha l'account ma <b>non è mai entrato</b>.`
