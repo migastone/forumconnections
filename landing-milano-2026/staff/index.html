@@ -216,6 +216,8 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .pill.cta-forum{background:#E2F1E8;color:#22603F}
 .pill.maturo{background:#FFF3D6;color:#8A6410}
 .pill.caldo{background:#FDEBE4;color:#9A3B12}
+.pill.vicino{background:#E2F1E8;color:#22603F}
+.pill.lontano{background:#F0EFF5;color:#7C7898}
 .campo-chiave{border:2px solid var(--gold);border-radius:10px;padding:10px;background:#FFFCF3}
 .campo-chiave label{color:var(--gold-dk)}
 .campo-chiave .serve{font-size:.76rem;color:var(--gold-dk);margin-top:4px;font-weight:700}
@@ -820,6 +822,9 @@ function riga(r){
         ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}
         ${r.caldo ? `<span class="pill caldo" title="Entrato in piattaforma negli ultimi 60 giorni e dà 4 o 5 stelle agli incontri fatti">🔥 caldo${
           r.caldo_media ? ' · ' + r.caldo_media : ''}</span>` : ''}
+        ${r.km_dalla_sede !== null && r.km_dalla_sede !== undefined
+          ? `<span class="pill ${r.km_dalla_sede <= 150 ? 'vicino' : 'lontano'}"
+               title="Distanza in linea d'aria dalla sede, a Pero (MI)">📍 ${r.km_dalla_sede} km</span>` : ''}
         ${sosiaNoti.has(r.id) ? `<span class="pill no" title="Su MigaMATCH c'è un'anagrafica con lo stesso nome ma un'altra email">⚠ forse già iscritto${
           sosiaNoti.get(r.id).profilato ? ' e profilato' : ''}</span>` : ''}</div>
       <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
@@ -2142,6 +2147,13 @@ function provenienza(c){
   else if(f.includes('speed_iscritto'))
     righe.push({ ico:'\u{1F4A4}', freddo:true, testo:`Si era iscritto a uno
       <b>Speed Connections</b> online, ma <b>non si \u00e8 presentato</b>.` });
+
+  if(c.km_dalla_sede !== null && c.km_dalla_sede !== undefined)
+    righe.push({ ico:'\u{1F4CD}', freddo: c.km_dalla_sede > 150,
+      testo: c.km_dalla_sede <= 150
+        ? `Vive a <b>${c.km_dalla_sede} km</b> dalla sede: il 17 ottobre ci arriva in giornata.`
+        : `Vive a <b>${c.km_dalla_sede} km</b> dalla sede. Per venire deve mettere in conto
+           il viaggio, e conviene dirlo prima che lo scopra da solo.` });
 
   if(f.includes('ricontatti_maggio'))
     righe.push({ ico:'\u{1F4C7}', freddo:true, testo:`Era gi\u00e0 nella lista dei ricontatti di
