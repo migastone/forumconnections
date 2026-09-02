@@ -421,7 +421,7 @@ const SPIEGA_ESITO = {
   'Altro operatore':       'Lo segue già un altro consulente: qui la lavorazione si chiude.',
   'Non si è profilato':    'Aveva promesso e non l\u2019ha fatto. Chiude la lavorazione di adesso, ma resta in archivio: è gente da riprendere più avanti, non gente da buttare.',
   'Contatto Duplicato':    'La stessa persona è già in lista con un\u2019altra scheda. Si archivia qui e si lavora l\u2019altra: niente data, niente nota, salva e vai avanti.',
-  'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo.',
+  'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo. Senza una data di richiamo futura la pratica si chiude: se invece devi risentirlo, metti la data qui sotto.',
   'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.'
 };
 const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
@@ -430,6 +430,13 @@ const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
                            'Non raggiungibile','Non può venire','Altro operatore',
                            'Contatto Duplicato','Non si è profilato']);
+
+/* «Altro» e' chiuso o aperto a seconda della data, quindi l'elenco qui sopra
+   da solo non basta: la risposta la calcola il database, che le date le ha.
+   Il ripiego sull'elenco serve solo se il campo non arriva. */
+const chiuso = c => c.chiuso !== undefined && c.chiuso !== null
+  ? !!c.chiuso
+  : TERMINALI.has(c.ultimo_esito || '');
 
 let sessione = null, io = null, pagina = 0, ultimoTotale = 0, cronometro = null;
 /* capacità delle linee WhatsApp: arriva col login e si aggiorna quando serve.
@@ -1219,7 +1226,7 @@ async function apriScheda(id){
 
       <div class="azioni">
         <button class="btn oro" data-gestisci>Gestisci contatto</button>
-        ${TERMINALI.has(c.ultimo_esito || '') ? ''
+        ${chiuso(c) ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
         <button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
@@ -1763,7 +1770,7 @@ function etichettaNonRisponde(c){
 /* Si ripristina solo ciò che non è chiuso davvero, e che non è già in coda. */
 function ripristinabile(c){
   const e = c.ultimo_esito || 'Da Contattare';
-  return e !== 'Da Contattare' && !TERMINALI.has(e);
+  return e !== 'Da Contattare' && !chiuso(c);
 }
 
 /* il marchio con cui ci si presenta cambia con la provenienza del contatto */
@@ -2320,9 +2327,14 @@ const SITUAZIONE = {
     testo:`Questa scheda è un <b>doppione</b>: la stessa persona è in lista anche altrove.`,
     fare:`Archiviata. Quella buona è l'altra — se non l'hai già trovata, cercala per nome o per telefono.` }),
 
-  'Altro': () => ({
-    testo:`Situazione fuori dai casi previsti.`,
-    fare:`Quello che è successo sta nella nota qui sotto: leggila prima di comporre.` })
+  'Altro': c => chiuso(c)
+    ? { classe:'chiuso',
+        testo:`Situazione fuori dai casi previsti, e <b>senza un richiamo in agenda</b>.`,
+        fare:`Vale come <b>chiusa</b>: è scesa in fondo e non torna su. Quello che è successo
+          sta nella nota qui sotto. Se serve riaprirla, basta rimettere una data futura.` }
+    : { testo:`Situazione fuori dai casi previsti.`,
+        fare:`Torna in cima <b>${giornoLungo(c.ricontatto_il) || 'alla data segnata'}</b>.
+          Quello che è successo sta nella nota qui sotto: leggila prima di comporre.` }
 };
 
 function situazione(c){
