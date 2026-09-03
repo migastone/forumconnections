@@ -1,0 +1,14 @@
+# Forum Connections — Milano, 17 ottobre 2026
+#
+# Riepilogo completo dell'evento per assistenti e agenti AI:
+#   https://www.forumconnections.com/llms.txt
+#
+# /staff/, /upsell/ e /aziende/ NON sono elencate qui di proposito: portano
+# gia' un meta robots "noindex", e un Disallow impedirebbe al crawler di
+# leggerlo — l'indirizzo finirebbe negli indici senza contenuto, che e' il
+# contrario di quello che serve.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://www.forumconnections.com/sitemap.xml
