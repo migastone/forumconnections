@@ -288,6 +288,21 @@ section{padding:66px 0}
 .logos{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:center}
 .logos img{height:64px;width:auto;object-fit:contain;background:#fff;border-radius:8px;padding:8px}
 
+/* ---------- Partner tecnici (fascia bianca) ---------- */
+.sec-partner{background:#fff;padding:26px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ptec{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px 30px}
+.ptec .lbl{margin:0;font-size:.72rem;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;color:#7C7896;white-space:nowrap}
+.ptec .item{display:flex;align-items:center;gap:16px;text-decoration:none;color:var(--body)}
+.ptec .item img{height:44px;width:auto;object-fit:contain;flex:none}
+.ptec .item span{font-size:.92rem;line-height:1.35}
+.ptec .item:hover span{color:var(--gold-dk)}
+@media(max-width:640px){
+  .sec-partner{padding:22px 0}
+  .ptec{flex-direction:column;text-align:center;gap:12px}
+  .ptec .item{flex-direction:column;gap:10px}
+}
+
 /* ---------- Program ---------- */
 .prog{list-style:none;padding:0;margin:0}
 .prog li{display:flex;gap:20px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.13)}
@@ -829,6 +844,12 @@ footer a{color:#B9B3DA}
         <p class="role">CEO BlueChain · Economia digitale</p>
         <p>Fondatore del Blockchain Revolution Summit: tecnologie decentralizzate al servizio dell'economia reale.</p>
       </div>
+      <div class="sp">
+        <img src="assets/img/sp-properzi.jpg" alt="Emanuele Properzi">
+        <h3>Emanuele Properzi</h3>
+        <p class="role">CEO di Bookness.it</p>
+        <p>Self publishing strategico e book marketing: perché il libro è lo strumento che costruisce fiducia prima ancora di stringere la mano.</p>
+      </div>
     </div>
 
     <div class="narrow" style="margin-top:44px">
@@ -905,6 +926,19 @@ footer a{color:#B9B3DA}
       <img src="assets/img/partner-manutenzione-tetto.jpg" alt="Manutenzione Tetto">
       <img src="assets/img/partner-the-bridge-strategy.jpg" alt="The Bridge Strategy">
       <img src="assets/img/partner-yes-we-work.jpg" alt="Yes We Work">
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ PARTNER TECNICI ══════════ -->
+<section class="sec-partner" id="partner-tecnici">
+  <div class="wrap">
+    <div class="ptec">
+      <p class="lbl">Partner tecnici</p>
+      <a class="item" href="https://www.bookness.it" target="_blank" rel="noopener">
+        <img src="assets/img/logo-bookness.png" alt="Bookness — il Tuo Libro x il Tuo Business">
+        <span>Diventa Autore del tuo libro Business in 30 giorni</span>
+      </a>
     </div>
   </div>
 </section>

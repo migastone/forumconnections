@@ -124,6 +124,8 @@ persone della rete hanno influenza dove serve a chi chiede.
 - **Lisa Marie Gellhaus** — TEDx e keynote speaker, comunicazione efficace
 - **Giuseppe Palma** — relazioni internazionali
 - **Antonio Pasqualin** — CEO BlueChain, fondatore del Blockchain Revolution Summit
+- **Emanuele Properzi** — CEO di Bookness.it, esperto di self publishing strategico
+  e book marketing: il libro come strumento di costruzione della fiducia nelle relazioni
 - **Giando Santamaria** — intelligenza artificiale applicata al business
 - **Stefania Spadafora** — Chief Investment Officer MigaMATCH, metodo Unicorno
 
@@ -204,6 +206,11 @@ Risponde una persona, non un modulo.
 **Oscar Dalvit**, fondatore di Segnalazione Vincente e ideatore dell'app MigaMATCH.
 È il padre dell'**Ingegneria Relazionale**: l'idea che una rete di relazioni si possa
 progettare e misurare invece di lasciarla al caso.
+
+## Partner tecnici
+
+- **Bookness** (https://www.bookness.it) — self publishing strategico e book
+  marketing: «Diventa Autore del tuo libro Business in 30 giorni»
 
 ## Organizzazione
 
