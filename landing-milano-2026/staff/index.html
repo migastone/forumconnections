@@ -2489,11 +2489,13 @@ Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.
   ci_pensa_scade: p =>
 `Ciao ${p.nome}, sono ${p.op}.
 
-Oggi scade quello che ti avevo tenuto da parte: *tre mesi di MigaMATCH in regalo* insieme al biglietto. Sono almeno *nove contatti in target* scelti dall'algoritmo — commercialisti, consulenti, avvocati, professionisti che con le aziende che cerchi tu ci parlano tutti i giorni.
+Oggi scade quello che ti avevo tenuto da parte: *tre mesi di MigaMATCH in regalo*, del valore di 90 €, insieme al biglietto. Sono almeno *nove contatti in target* scelti dall'algoritmo — commercialisti, consulenti, avvocati, professionisti che con le aziende che cerchi tu ci parlano tutti i giorni.
 
-Non vedo ancora la tua iscrizione. Se oggi non te la senti chiudo qui e non ti disturbo più, ci mancherebbe: il biglietto resta su www.forumconnections.com quando vuoi, solo senza il regalo.
+Non vedo ancora la tua iscrizione. Il biglietto resta comunque disponibile anche più avanti su www.forumconnections.com, finché ci sono posti — solo senza il regalo. Tieni conto che dal 1° ottobre il prezzo sale a 199 €.
 
-Se invece lo vuoi, questo è il tuo link — prezzo di oggi ${p.prezzo}: ${p.link}`,
+Se invece lo vuoi prendere ora, questo è il tuo link — prezzo di oggi ${p.prezzo}: ${p.link}
+
+Dimmi tu: cosa hai deciso?`,
 
   ci_pensa: p =>
 `Ciao ${p.nome}, sono ${p.op} di ${p.brand} — grazie per il tempo di prima.
@@ -2504,18 +2506,20 @@ Intanto ti lascio Economy, il numero di agosto: https://mssl.it/economy — a pa
 
 Se nel frattempo ti viene un dubbio, scrivimi pure qui.`,
 
-  /* Secondo giorno a vuoto, e ultimo tentativo. Dice quello che c'era da dire
-     e chiude offrendo l'uscita: se non vuole essere disturbato basta che lo
-     scriva. Meglio una cancellazione chiesta da lui che un numero che ci
-     ignora per settimane. */
+  /* Secondo giorno a vuoto, e ultimo tentativo. Aggiornato il 4 settembre 2026:
+     porta il regalo Economy e propone il Forum invece di offrire l'uscita
+     dagli archivi. */
   secondo_giorno: p =>
-`Ciao ${p.nome}, sono ${p.op} di ${p.brand}, avevo un bel contatto da darti per accelerare la tua attività senza nulla in cambio, ma anche oggi non ti ho trovato.
+`Ciao ${p.nome}, ho provato a chiamarti anche oggi ma probabilmente non ho ancora trovato il momento giusto.
 
-Se trovare clienti giusti è un problema anche per te, dimmi quando posso chiamarti e ti spiego come funziona.
+Intanto volevo lasciarti in regalo l'inserto Economy del Sole 24 Ore di agosto: a pagina 22 trovi un articolo che potrebbe interessarti.
+https://mssl.it/economy
 
-Altrimenti dimmelo e ti cancelliamo dai nostri archivi, così non ti disturbiamo più.
+Il motivo vero per cui ti cercavo però è un altro: ho riservato per te un'opportunità per Forum Connections, il nostro evento a Milano del 17 ottobre (saremo in 250 dal vivo). Rispetto alle scorse edizioni ci sono belle novità.
 
-A presto, ${p.op}`,
+Ti va se ti mando due righe con i dettagli?
+
+Buona giornata!`,
 
   /* SMS del primo buco. Vincoli suoi, diversi da tutti gli altri messaggi:
      centosessanta caratteri, e il mittente e' il nome «MigaMATCH», non un
