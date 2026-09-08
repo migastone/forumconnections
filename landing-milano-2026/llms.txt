@@ -58,6 +58,9 @@ da connettore invece che da venditore.
 - Il pranzo networking, con sessione dedicata ai tavoli
 - Tutti gli interventi formativi sull'ingegneria relazionale
 - L'accesso all'app MigaMATCH con profilo e match
+- Un match gratuito appena ci si iscrive: dopo essersi profilati su MigaMATCH
+  l'algoritmo restituisce subito il primo abbinamento, per provare il networking
+  AI prima dell'evento
 - Il canale Telegram esclusivo dei partecipanti
 - La garanzia «Matchato o rimborsato»
 
@@ -134,7 +137,8 @@ tavoli** come tutti gli altri.
 - 10:45 — 2 sessioni di speed meeting, alternate agli interventi formativi
 - 12:30 — «Il Talento al Centro» con Andrea Colombo
 - 13:20 — pranzo networking (incluso)
-- 14:35 — Lisa Marie Gellhaus, Giuseppe Palma e le ultime 2 sessioni di speed meeting
+- 14:35 — Lisa Marie Gellhaus e Giuseppe Palma
+- 15:20 — le ultime 2 sessioni di speed meeting, alternate agli interventi formativi
 - 16:20 — sessione MigaMATCH e intelligenza artificiale nelle relazioni
 - 17:55 — intervento finale, recap, premiazioni e chiusura
 - 19:30 — apericena e open networking (a parte, 49 €)

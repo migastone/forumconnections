@@ -127,6 +127,20 @@ section{padding:66px 0}
   border-radius:8px;padding:10px 18px;font-size:.9rem}
 .hero-meta b{color:var(--gold);display:block;font-size:1.02rem}
 
+/* ---------- Match gratuito ----------
+   Sta sotto la CTA perche' e' la prova, non l'offerta: chi dubita che
+   l'algoritmo funzioni puo' verificarlo prima di tirare fuori la carta. */
+.bonus-match{max-width:640px;margin:22px auto 0;text-align:left;
+  background:rgba(239,199,94,.10);border:1px solid rgba(239,199,94,.42);
+  border-radius:12px;padding:16px 18px;font-size:.95rem;line-height:1.55;color:#E9E6F8}
+.bonus-match .tag{display:inline-block;background:var(--gold);color:#1A1330;
+  font-size:.64rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+  padding:4px 11px;border-radius:99px;margin-bottom:9px}
+.bonus-match p{margin:0}
+.bonus-match strong{color:var(--gold-2)}
+.sec-gold .bonus-match{background:rgba(27,20,80,.06);border-color:var(--gold-dk);color:var(--body)}
+.sec-gold .bonus-match strong{color:var(--ink)}
+
 /* ---------- Countdown ---------- */
 .countdown{display:flex;gap:10px;justify-content:center;margin:26px 0 6px;flex-wrap:wrap}
 .cd-box{background:rgba(239,199,94,.13);border:1px solid rgba(239,199,94,.4);
@@ -211,8 +225,11 @@ section{padding:66px 0}
 /* ---------- Pricing ---------- */
 .price-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
   margin:32px auto}
-.price{background:#fff;border:2px solid var(--line);border-radius:14px;padding:26px 22px;text-align:center}
+.price{background:#fff;border:2px solid var(--line);border-radius:14px;padding:26px 22px;text-align:center;
+  display:block;text-decoration:none;color:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.price:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(26,19,48,.14);border-color:var(--gold)}
 .price.on{border-color:var(--gold);box-shadow:0 12px 34px rgba(239,199,94,.3);position:relative}
+.price.on:hover{box-shadow:0 16px 38px rgba(239,199,94,.4)}
 .price.on::after{content:'ATTIVO ORA';position:absolute;top:-12px;left:50%;transform:translateX(-50%);
   background:var(--gold);color:#1A1330;font-size:.66rem;font-weight:800;letter-spacing:.12em;
   padding:4px 14px;border-radius:99px}
@@ -397,6 +414,13 @@ footer a{color:#B9B3DA}
     <div class="cta-block">
       <a href="#biglietti" class="btn big">VOGLIO IL MIO TAVOLO CALCOLATO →</a>
       <p class="btn-sub" style="color:#B9B3DA">Posti limitati a 250 · Pranzo incluso<br><strong style="color:var(--gold)">Matchato o rimborsato: entro le 12.00 del 17 ottobre riprendi i tuoi soldi</strong></p>
+
+      <div class="bonus-match">
+        <span class="tag">Incluso nell'iscrizione</span>
+        <p><strong>Un match gratuito, subito.</strong> Appena ti iscrivi ti profili su MigaMATCH
+          e l'algoritmo ti restituisce il tuo primo abbinamento. Il networking calcolato
+          lo provi da casa, prima ancora di arrivare a Milano.</p>
+      </div>
     </div>
 
     <div class="hero-meta">
@@ -728,7 +752,8 @@ footer a{color:#B9B3DA}
       <li><span class="t">10:45</span><span><strong>2 sessioni di Speed Meeting</strong> su tavoli da 10, alternate agli interventi formativi su come essere memorabili.</span></li>
       <li><span class="t">12:30</span><span><strong>«Il Talento al Centro»</strong> con Andrea Colombo: quanto conta partire dall'io per costruire relazioni che reggono.</span></li>
       <li><span class="t">13:20</span><span><strong>Pranzo networking</strong> con sessione speciale ai tavoli. (Incluso nel biglietto.)</span></li>
-      <li><span class="t">14:35</span><span>Tecniche di comunicazione efficace con Lisa Marie Gellhaus, relazioni internazionali con Giuseppe Palma, e le <strong>ultime 2 sessioni di Speed Meeting</strong>.</span></li>
+      <li><span class="t">14:35</span><span>Tecniche di comunicazione efficace con Lisa Marie Gellhaus e relazioni internazionali con Giuseppe Palma.</span></li>
+      <li><span class="t">15:20</span><span><strong>Le ultime 2 sessioni di Speed Meeting</strong> su tavoli da 10, alternate agli interventi formativi su come essere memorabili.</span></li>
       <li><span class="t">16:20</span><span><strong>Sessione MigaMATCH e intelligenza artificiale nelle relazioni</strong>: come continuano i match quando torni in ufficio.</span></li>
       <li><span class="t">17:55</span><span>Intervento finale su come essere memorabili, recap, premiazioni e chiusura.</span></li>
       <li><span class="t">19:30</span><span><strong>Apericena esclusivo</strong> e open networking finale: apericena, bollicine e organizzazione del match making a cura di MigaMATCH <em>(49 € — da acquistare a parte)</em>.</span></li>
@@ -774,10 +799,11 @@ footer a{color:#B9B3DA}
         <p>«Hai solo 60 secondi»: la prima parola conta, e non è buongiorno.</p>
       </div>
       <div class="sp">
-        <img src="assets/img/sp-colombo.jpg" alt="Andrea Colombo">
+        <img src="assets/img/sp-colombo.jpg?v=20260903" alt="Andrea Colombo">
         <h3>Andrea Colombo</h3>
         <p class="role">Leadership relazionale</p>
         <p>«Il Talento al Centro»: prima di costruire una rete bisogna sapere cosa ci si porta dentro.</p>
+        <p>«Il Talento nel renderci unici, attraverso le Relazioni ci da l'opportunità di esprimerlo al massimo e trasformarlo in valore per gli altri.»</p>
       </div>
       <div class="sp">
         <img src="assets/img/sp-burdet.jpg" alt="Katia Burdet">
@@ -915,18 +941,14 @@ footer a{color:#B9B3DA}
     </div>
 
     <div class="price-grid narrow">
-      <div class="price" data-fino="2026-08-31">
-        <span class="amt">159 €</span>
-        <p class="when">Entro il <strong>31 agosto 2026</strong><br>pranzo incluso</p>
-      </div>
-      <div class="price on" data-fino="2026-09-30">
+      <a href="https://auto.migamatch.com/shop?sku=MM_FORUM_MI_20261017" class="price on" data-fino="2026-09-30" data-cta="checkout">
         <span class="amt">179 €</span>
         <p class="when">Entro il <strong>30 settembre 2026</strong><br>pranzo incluso</p>
-      </div>
-      <div class="price" data-fino="2026-10-17">
+      </a>
+      <a href="https://auto.migamatch.com/shop?sku=MM_FORUM_MI_20261017" class="price" data-fino="2026-10-17" data-cta="checkout">
         <span class="amt">199 €</span>
         <p class="when">Prezzo pieno<br>pranzo incluso</p>
-      </div>
+      </a>
     </div>
 
     <div class="garanzia narrow">
@@ -958,6 +980,13 @@ footer a{color:#B9B3DA}
       </a>
       <p class="btn-sub"><strong>Matchato o rimborsato: entro le 12.00 del 17 ottobre riprendi i tuoi soldi</strong><br>Pranzo incluso · 36 incontri garantiti · App MigaMATCH inclusa<br>
 <span style="font-size:.78rem">Vendita riservata a titolari di partita IVA. Se sei dipendente puoi indicare la partita IVA dell'azienda per cui lavori.</span></p>
+
+      <div class="bonus-match narrow">
+        <span class="tag">Incluso nell'iscrizione</span>
+        <p><strong>Non devi crederci sulla parola.</strong> Appena ti iscrivi ti profili su MigaMATCH
+          e ricevi <strong>un match gratuito</strong>: l'algoritmo lavora sul tuo profilo e ti dà il primo
+          abbinamento prima ancora del 17 ottobre.</p>
+      </div>
     </div>
 
     <div class="narrow card" style="background:#fff;margin-top:16px">
@@ -967,6 +996,7 @@ footer a{color:#B9B3DA}
         <li><strong>Il pranzo networking</strong>, con sessione dedicata a tavola</li>
         <li>Tutti gli interventi formativi sull'ingegneria relazionale</li>
         <li>L'accesso all'<strong>app MigaMATCH</strong> con il tuo profilo e i tuoi match</li>
+        <li><strong>Un match gratuito appena ti iscrivi</strong>: ti profili su MigaMATCH e l'algoritmo ti dà subito il primo abbinamento, per provare il networking AI prima dell'evento</li>
         <li>L'accesso al canale Telegram esclusivo per conoscersi già prima dell'evento</li>
         <li><strong>La garanzia «Matchato o rimborsato»</strong>: entro le 12.00 del 17 ottobre chiedi il rimborso in cassa e riprendi tutto</li>
       </ul>
@@ -1218,7 +1248,7 @@ footer a{color:#B9B3DA}
 <div class="sticky" id="sticky">
   <div class="wrap">
     <div class="txt">17 ottobre · Milano — <b id="sticky-cd">—</b> al Forum</div>
-    <a href="#biglietti" class="btn sm">Prendi il posto — <span data-prezzo>179 €</span></a>
+    <a href="https://auto.migamatch.com/shop?sku=MM_FORUM_MI_20261017" class="btn sm" data-cta="checkout">Prendi il posto — <span data-prezzo>179 €</span></a>
   </div>
 </div>
 
