@@ -1,0 +1,118 @@
+/* ─────────── Banner del consenso ───────────
+   Il file e' autonomo e non usa le variabili CSS della home: le pagine
+   interne hanno un foglio di stile diverso, e il banner deve venire identico
+   su tutte e tre senza dipendere da quale ha caricato cosa.
+
+   Sui colori dei bottoni: «Rifiuta» ha lo stesso peso visivo di «Accetta»
+   (stessa dimensione, stesso font, stesso contrasto). Non e' una scelta
+   estetica — un rifiuto reso meno visibile dell'accettazione e' proprio il
+   caso che il Garante contesta. */
+
+.fc-cs, .fc-cs * { box-sizing: border-box }
+
+/* ---------- barra in fondo ---------- */
+.fc-cs{
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483000;
+  background: #120E38; color: #E8E5F5;
+  border-top: 3px solid #EFC75E;
+  box-shadow: 0 -10px 40px rgba(0,0,0,.35);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px; line-height: 1.55;
+  padding: 20px 22px;
+  animation: fc-cs-su .28s ease-out;
+}
+@keyframes fc-cs-su { from { transform: translateY(100%) } to { transform: none } }
+@media (prefers-reduced-motion: reduce){ .fc-cs{ animation: none } }
+
+.fc-cs-in{
+  max-width: 1120px; margin: 0 auto;
+  display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+}
+.fc-cs-testo{ flex: 1 1 420px; min-width: 260px; margin: 0 }
+.fc-cs-testo strong{ color: #fff; font-weight: 700 }
+.fc-cs a{ color: #EFC75E }
+.fc-cs-azioni{ display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+
+/* ---------- bottoni ---------- */
+.fc-cs-b{
+  font: inherit; font-weight: 800; letter-spacing: .01em;
+  padding: 13px 26px; border-radius: 8px; border: 2px solid transparent;
+  cursor: pointer; text-align: center; white-space: nowrap;
+  transition: transform .08s, filter .12s;
+}
+.fc-cs-b:hover{ filter: brightness(1.08) }
+.fc-cs-b:active{ transform: translateY(2px) }
+.fc-cs-b:focus-visible{ outline: 3px solid #EFC75E; outline-offset: 3px }
+.fc-cs-si{ background: #EFC75E; color: #1A1330 }
+.fc-cs-no{ background: transparent; color: #fff; border-color: #8C86B8 }
+.fc-cs-no:hover{ border-color: #E8E5F5 }
+.fc-cs-piu{
+  background: none; border: none; color: #C9C4E4; font: inherit;
+  text-decoration: underline; cursor: pointer; padding: 13px 6px;
+}
+.fc-cs-piu:hover{ color: #fff }
+.fc-cs-piu:focus-visible{ outline: 3px solid #EFC75E; outline-offset: 3px }
+
+/* ---------- pannello preferenze ---------- */
+.fc-cs-velo{
+  position: fixed; inset: 0; z-index: 2147483001;
+  background: rgba(11,8,32,.72); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 22px;
+}
+.fc-cs-pan{
+  background: #fff; color: #3A3752; border-radius: 14px;
+  max-width: 620px; width: 100%; max-height: 88vh; overflow-y: auto;
+  padding: 30px; box-shadow: 0 24px 70px rgba(0,0,0,.45);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px; line-height: 1.6;
+}
+.fc-cs-pan h2{
+  font-family: 'Anton', 'Arial Narrow Bold', Impact, system-ui, sans-serif;
+  font-weight: 400; text-transform: uppercase; color: #14122B;
+  font-size: 1.6rem; line-height: 1.1; margin: 0 0 .5em;
+}
+.fc-cs-pan a{ color: #C9A03C }
+
+.fc-cs-voce{
+  border: 1px solid #E3E0EE; border-radius: 10px;
+  padding: 16px 18px; margin: 14px 0;
+}
+.fc-cs-voce-top{ display: flex; gap: 14px; align-items: baseline; justify-content: space-between }
+.fc-cs-voce h3{ margin: 0; font-size: 1.02rem; font-weight: 700; color: #14122B }
+.fc-cs-voce p{ margin: 8px 0 0; font-size: .92rem }
+.fc-cs-fisso{ font-size: .82rem; font-weight: 700; color: #6E6992; text-transform: uppercase; letter-spacing: .06em }
+
+/* interruttore */
+.fc-cs-sw{ position: relative; display: inline-block; width: 52px; height: 30px; flex: none }
+.fc-cs-sw input{ position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer }
+.fc-cs-sw span{
+  position: absolute; inset: 0; background: #C7C2DE; border-radius: 30px;
+  transition: background .15s; pointer-events: none;
+}
+.fc-cs-sw span::before{
+  content: ''; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: transform .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.fc-cs-sw input:checked + span{ background: #2E9E5B }
+.fc-cs-sw input:checked + span::before{ transform: translateX(22px) }
+.fc-cs-sw input:focus-visible + span{ outline: 3px solid #C9A03C; outline-offset: 3px }
+
+.fc-cs-pan-azioni{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px }
+.fc-cs-pan .fc-cs-no{ color: #14122B; border-color: #C7C2DE }
+.fc-cs-pan .fc-cs-no:hover{ border-color: #14122B }
+
+/* ---------- link nel footer ---------- */
+.fc-cs-link{
+  background: none; border: none; padding: 0; font: inherit;
+  color: inherit; text-decoration: underline; cursor: pointer;
+}
+
+@media (max-width: 640px){
+  .fc-cs{ padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) }
+  .fc-cs-in{ gap: 14px }
+  .fc-cs-azioni{ width: 100% }
+  .fc-cs-b{ flex: 1 1 auto }
+  .fc-cs-piu{ width: 100%; padding: 6px }
+  .fc-cs-pan{ padding: 22px }
+}
