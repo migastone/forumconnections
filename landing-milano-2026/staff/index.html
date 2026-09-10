@@ -61,6 +61,37 @@ header select:focus{outline:2px solid var(--gold);outline-offset:1px}
 main{padding:16px 18px 60px}
 .conteggio{color:var(--tenue);font-size:.85rem;margin:0 0 10px}
 
+/* ---------- sezioni ---------- */
+/* Due liste, una barra sola: i filtri della coda e quelli dei compratori si
+   danno il cambio nello stesso posto. Due barre appiccicate una sotto l'altra
+   si mangerebbero mezzo schermo di portatile, che e' dove si lavora. */
+.sezioni{display:flex;gap:4px;margin-right:6px}
+.gruppo{display:contents}
+.tab{padding:7px 13px;border:1px solid var(--bordo);border-radius:8px;background:#fff;
+     color:var(--tenue);font-weight:700;font-size:.87rem;width:auto}
+.tab:hover{border-color:var(--gold)}
+.tab.attiva{background:var(--navy);border-color:var(--navy);color:#fff}
+.tab .badge{display:inline-block;margin-left:7px;padding:0 7px;border-radius:99px;
+            background:var(--gold);color:var(--ink);font-size:.72rem}
+.tab .badge:empty{display:none}
+
+/* Il totale sta in cima e non si muove quando filtri: e' il numero della
+   campagna, non del filtro che hai addosso. */
+.totale-acq{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 14px;padding:14px 18px;
+            border:1px solid var(--gold);border-radius:12px;background:#FFFCF3}
+.totale-acq div{min-width:104px}
+.totale-acq b{display:block;font-size:1.5rem;line-height:1.15;color:var(--navy)}
+.totale-acq small{color:var(--gold-dk);font-size:.7rem;text-transform:uppercase;
+                  letter-spacing:.05em;font-weight:700}
+.riga.acq{border-left-color:var(--verde)}
+.riga.acq.storico{border-left-color:var(--grigio)}
+.riga.acq.aperta{margin-bottom:0;border-radius:10px 10px 0 0}
+.dett-acq{margin:0 0 7px;padding:11px 14px;background:#fff;border:1px solid var(--bordo);
+          border-top:0;border-radius:0 0 10px 10px;font-size:.88rem;line-height:1.45}
+.dett-acq .nota{margin:7px 0 0;padding:9px 11px;background:#F7F7FB;
+                border:1px solid var(--bordo);border-radius:8px}
+.vuoto{color:var(--tenue);font-size:.9rem;padding:14px 2px}
+
 /* ---------- lista ---------- */
 .riga{background:#fff;border:1px solid var(--bordo);border-left:5px solid var(--grigio);
       border-radius:10px;padding:11px 14px;margin-bottom:7px;display:flex;gap:14px;align-items:center;
@@ -273,28 +304,52 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   </header>
 
   <div class="barra">
-    <input type="search" id="cerca" placeholder="Nome, email o telefono…">
-    <select id="f-fascia"><option value="">Tutte le fasce</option></select>
-    <select id="f-urgenza">
-      <option value="">Tutte le urgenze</option>
-      <option value="scaduto">Scaduti</option>
-      <option value="oggi">Oggi</option>
-      <option value="settimana">Questa settimana</option>
-      <option value="da_contattare">Da contattare</option>
-    </select>
-    <select id="f-stato"><option value="">Tutti gli stati</option></select>
-    <button class="btn" style="width:auto;padding:7px 14px" id="ricarica">Aggiorna</button>
+    <div class="sezioni">
+      <button class="tab attiva" id="tab-coda">Coda</button>
+      <button class="tab" id="tab-acquistati">Hanno comprato<span class="badge" id="badge-acq"></span></button>
+    </div>
+    <div class="gruppo" id="filtri-coda">
+      <input type="search" id="cerca" placeholder="Nome, email o telefono…">
+      <select id="f-fascia"><option value="">Tutte le fasce</option></select>
+      <select id="f-urgenza">
+        <option value="">Tutte le urgenze</option>
+        <option value="scaduto">Scaduti</option>
+        <option value="oggi">Oggi</option>
+        <option value="settimana">Questa settimana</option>
+        <option value="da_contattare">Da contattare</option>
+      </select>
+      <select id="f-stato"><option value="">Tutti gli stati</option></select>
+      <button class="btn" style="width:auto;padding:7px 14px" id="ricarica">Aggiorna</button>
+    </div>
+    <div class="gruppo nascosto" id="filtri-acq">
+      <input type="search" id="cerca-acq" placeholder="Nome, email o azienda…">
+      <select id="f-acq-setter"><option value="">Tutte le setter</option></select>
+      <select id="f-acq-benvenuto">
+        <option value="">Benvenuto: tutti</option>
+        <option value="da_fare">Benvenuto da mandare</option>
+        <option value="fatto">Benvenuto gia' mandato</option>
+      </select>
+      <button class="btn" style="width:auto;padding:7px 14px" id="ricarica-acq">Aggiorna</button>
+    </div>
   </div>
 
   <main>
-    <div id="target" class="target nascosto"></div>
-    <details id="conversione" class="conv nascosto"></details>
-    <div id="fase" class="fase nascosto"></div>
-    <p class="conteggio" id="conteggio">Carico…</p>
-    <div id="lista"></div>
-    <div style="text-align:center;margin-top:14px">
-      <button class="btn" style="width:auto;padding:10px 22px" id="altri">Mostra altri</button>
-    </div>
+    <section id="sez-coda">
+      <div id="target" class="target nascosto"></div>
+      <details id="conversione" class="conv nascosto"></details>
+      <div id="fase" class="fase nascosto"></div>
+      <p class="conteggio" id="conteggio">Carico…</p>
+      <div id="lista"></div>
+      <div style="text-align:center;margin-top:14px">
+        <button class="btn" style="width:auto;padding:10px 22px" id="altri">Mostra altri</button>
+      </div>
+    </section>
+
+    <section id="sez-acquistati" class="nascosto">
+      <div class="totale-acq" id="totale-acq"></div>
+      <p class="conteggio" id="conteggio-acq">Carico…</p>
+      <div id="lista-acq"></div>
+    </section>
   </main>
 </div>
 
@@ -410,7 +465,7 @@ const SPIEGA_ESITO = {
   'Da Ricontattare':       'Avete parlato e vi siete dati un appuntamento. Se invece il telefono ha squillato a vuoto, chiudi qui e usa il pulsante «Non risponde».',
   'Non risponde':          'Primo squillo a vuoto: si riprova il giorno dopo, alla data qui sotto.',
   'Non raggiungibile':     'Secondo squillo a vuoto: il contatto si archivia e non torna in lista.',
-  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Sul biglietto la data qui sotto è la scadenza dei tre mesi in regalo: la scheda la propone già a tre giorni lavorativi.',
+  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Sul biglietto la data qui sotto è la scadenza del codice FC20 (20% di sconto): la scheda la propone già a tre giorni lavorativi.',
   'Promette Profilazione': 'Ha promesso di completare il profilo entro la data qui sotto. È quella a farlo tornare in cima.',
   'Profilato - Call back': 'Si è profilato dopo una nostra chiamata: si richiama per il feedback sui primi match.',
   'Viene':                 'Ha detto che viene ma non ha ancora pagato: resta in lavorazione finché non compra.',
@@ -723,6 +778,9 @@ async function entra(){
   popolaOperatori();
   await Promise.all([caricaSosia(), caricaKpi()]);
   await caricaCoda(true);
+  /* Senza await: la coda e' quello che serve subito, i compratori possono
+     arrivare un istante dopo senza far aspettare nessuno. */
+  caricaAcquistati();
 }
 
 /* L'elenco arriva da /login. Si accorpano gli omonimi: in `operatori` la stessa
@@ -864,6 +922,152 @@ $('#ricarica').onclick = () => caricaCoda(true);
 $('#f-fascia').onchange = $('#f-urgenza').onchange = $('#f-stato').onchange =
   $('#f-operatore').onchange = () => { caricaCoda(true); disegnaKpi(); };
 let attesa; $('#cerca').oninput = () => { clearTimeout(attesa); attesa = setTimeout(()=>caricaCoda(true), 300); };
+
+/* ═══════════════ hanno comprato ═══════════════ */
+/* Chi paga esce dalla coda nello stesso istante in cui paga: coda_lavoro
+   esclude gli acquirenti, ed e' giusto — non si richiama chi ha gia' comprato.
+   Il guaio e' che per l'operatrice il contatto si volatilizzava senza una
+   parola: e' successo con Claudio Sasso, chiamato tre volte da Miriam e
+   comprato la sera del 4 settembre, e lei se n'e' accorta solo perche' il
+   giorno del richiamo non lo trovava piu'. Questa lista e' dove lo ritrova.
+
+   Il numero grande in cima conta solo i biglietti pagati DOPO una nostra
+   chiamata. Gli altri quarantasei erano gia' in pancia prima che la campagna
+   partisse: non li ha venduti nessuna setter, e sommarli qui trasformerebbe
+   l'unico numero che dice come sta andando in un numero da non guardare. */
+let acquistati = [];
+
+const euro = c => ((Number(c) || 0) / 100).toLocaleString('it-IT',
+  { style:'currency', currency:'EUR', minimumFractionDigits:0, maximumFractionDigits:0 });
+
+async function caricaAcquistati(){
+  try{
+    const d = await api('/acquistati');
+    acquistati = d.righe || [];
+  }catch(e){
+    $('#conteggio-acq').textContent = 'Errore: ' + e.message;
+    return;
+  }
+  popolaSetter();
+  disegnaAcquistati();
+}
+
+/* Nella tendina solo chi ha davvero venduto: un elenco di tutta la squadra in
+   cui quasi ogni voce non ha nemmeno una riga si filtra a vuoto. */
+function popolaSetter(){
+  const visti = new Map();
+  for(const r of acquistati) if(r.setter_id && !visti.has(r.setter_id)) visti.set(r.setter_id, r.setter);
+  $('#f-acq-setter').innerHTML = '<option value="">Tutte le setter</option>'
+    + [...visti].map(([id, nome]) => `<option value="${esc(id)}">${esc(nome)}</option>`).join('');
+}
+
+/* I totali arrivano gia' calcolati su ogni riga, come finestra sull'intera
+   vista: per questo non si muovono quando filtri, ed e' quello che devono
+   fare. Il ripiego sulla somma delle righe serve solo se la pagina si trova
+   davanti a una vista piu' vecchia della sua. */
+function totaliLifetime(){
+  const r = acquistati[0];
+  if(r && r.biglietti_lifetime != null) return {
+    biglietti: Number(r.biglietti_lifetime)     || 0,
+    cents:     Number(r.speso_lifetime_cents)   || 0,
+    persone:   Number(r.contatti_lifetime)      || 0 };
+  const venduti = acquistati.filter(x => x.lavorato);
+  return { biglietti: venduti.reduce((t, x) => t + (Number(x.biglietti) || 0), 0),
+           cents:     venduti.reduce((t, x) => t + (Number(x.speso_cents) || 0), 0),
+           persone:   venduti.length };
+}
+
+function acquistatiFiltrati(){
+  const cerca  = ($('#cerca-acq').value || '').trim().toLowerCase();
+  const setter = $('#f-acq-setter').value;
+  const benv   = $('#f-acq-benvenuto').value;
+  return acquistati.filter(r => {
+    if(setter && r.setter_id !== setter)            return false;
+    if(benv === 'da_fare' && !r.benvenuto_da_mandare) return false;
+    if(benv === 'fatto'   &&  r.benvenuto_da_mandare) return false;
+    if(!cerca) return true;
+    return [r.nome, r.cognome, r.email, r.telefono, r.azienda, r.setter]
+      .filter(Boolean).join(' ').toLowerCase().includes(cerca);
+  });
+}
+
+function disegnaAcquistati(){
+  const t = totaliLifetime();
+  const daMandare = acquistati.filter(r => r.benvenuto_da_mandare).length;
+  $('#badge-acq').textContent = t.persone || '';
+  $('#totale-acq').innerHTML = `
+    <div><b>${t.biglietti}</b><small>biglietti venduti al telefono</small></div>
+    <div><b>${euro(t.cents)}</b><small>incassato</small></div>
+    <div><b>${t.persone}</b><small>${t.persone === 1 ? 'persona' : 'persone'}</small></div>
+    <div><b>${daMandare}</b><small>benvenuti da mandare</small></div>`;
+
+  const righe = acquistatiFiltrati();
+  $('#conteggio-acq').textContent = righe.length === acquistati.length
+    ? `${acquistati.length} usciti dalla coda perche' hanno comprato`
+    : `${righe.length} di ${acquistati.length} mostrati`;
+  $('#lista-acq').innerHTML = righe.length
+    ? righe.map(rigaAcquistato).join('')
+    : '<p class="vuoto">Nessuno con questi filtri.</p>';
+}
+
+function rigaAcquistato(r){
+  const nome = esc([r.nome, r.cognome].filter(Boolean).join(' ')) || '(senza nome)';
+  const quante = Number(r.n_chiamate) || 0;
+  return `<div class="riga acq${r.lavorato ? '' : ' storico'}" data-acq="${r.id}">
+      <div>
+        <div class="chi-nome">${nome}
+          ${r.lavorato ? '<span class="pill si">venduto al telefono</span>'
+                       : '<span class="pill libero">aveva gia\' comprato</span>'}
+          ${r.benvenuto_da_mandare ? '<span class="pill no">benvenuto da mandare</span>' : ''}
+        </div>
+        <div class="meta">${esc(r.azienda || 'azienda non indicata')}${r.setter ? ' · ' + esc(r.setter) : ''}
+          · ${quante} chiamat${quante === 1 ? 'a' : 'e'} · ultimo esito: ${esc(r.ultimo_esito)}</div>
+      </div>
+      <div class="destra">${r.acquistato_il
+        ? `<b style="color:var(--verde);font-size:.95rem">${euro(r.speso_cents)}</b><br>${dataOra(r.acquistato_il)}`
+        : 'comprato prima<br>che lo chiamassimo'}</div>
+    </div>
+    <div class="dett-acq nascosto" data-dett="${r.id}">
+      <div>${esc(r.email || 'email non indicata')} · ${esc(r.telefono || 'telefono non indicato')}</div>
+      <div style="color:var(--tenue);margin-top:4px">prima chiamata ${dataOra(r.prima_chiamata_il)}
+        · ultima ${dataOra(r.ultima_chiamata_il)}${r.benvenuto_il
+          ? ' · benvenuto mandato ' + dataOra(r.benvenuto_il) : ''}</div>
+      ${r.ultima_nota ? `<p class="nota">${esc(r.ultima_nota)}</p>` : ''}
+    </div>`;
+}
+
+/* La riga si apre qui sotto invece di aprire la scheda della coda: quella,
+   per un contatto che dalla coda e' uscito, ripiega su «Da Contattare» come
+   ultimo esito — e leggere «Da Contattare» sotto il nome di chi ha appena
+   pagato e' peggio che non poterlo aprire. */
+$('#lista-acq').addEventListener('click', e => {
+  const riga = e.target.closest('[data-acq]');
+  if(!riga) return;
+  const dett = $(`[data-dett="${riga.dataset.acq}"]`);
+  if(!dett) return;
+  dett.classList.toggle('nascosto');
+  riga.classList.toggle('aperta', !dett.classList.contains('nascosto'));
+});
+$('#ricarica-acq').onclick = () => caricaAcquistati();
+$('#f-acq-setter').onchange = $('#f-acq-benvenuto').onchange = () => disegnaAcquistati();
+let attesaAcq; $('#cerca-acq').oninput = () => { clearTimeout(attesaAcq); attesaAcq = setTimeout(disegnaAcquistati, 200); };
+
+/* Cambiare sezione non ricarica niente: le due liste sono gia' in memoria e
+   rimbalzare fra l'una e l'altra deve costare zero. La tendina in testata
+   sparisce con la coda, perche' li' dice «di chi vuoi vedere la coda» e sui
+   compratori il filtro che conta e' un altro. */
+function mostraSezione(quale){
+  const acq = quale === 'acquistati';
+  $('#sez-coda').classList.toggle('nascosto', acq);
+  $('#sez-acquistati').classList.toggle('nascosto', !acq);
+  $('#filtri-coda').classList.toggle('nascosto', acq);
+  $('#filtri-acq').classList.toggle('nascosto', !acq);
+  $('#f-operatore').classList.toggle('nascosto', acq);
+  $('#tab-coda').classList.toggle('attiva', !acq);
+  $('#tab-acquistati').classList.toggle('attiva', acq);
+}
+$('#tab-coda').onclick = () => mostraSezione('coda');
+$('#tab-acquistati').onclick = () => mostraSezione('acquistati');
 
 /* ═══════════════ KPI ═══════════════ */
 /* ═══════════════ la corsa del giorno ═══════════════
@@ -1489,7 +1693,7 @@ async function apriScheda(id){
        Si può spostare, ed è quella la data in cui il contatto risale in cima. */
     if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value){
       /* «Ci pensa» su chi deve comprare il biglietto non e' un richiamo
-         qualunque: i tre mesi di MigaMATCH valgono tre giorni lavorativi, e
+         qualunque: il codice FC20 vale tre giorni lavorativi, e
          la data che torna deve essere quella, non il giorno dopo. */
       const quanti = (esito === 'Ci pensa' && obiettivoPer(c) === 'forum') ? 3 : 1;
       q('[data-ricontatto]').value = perInput(giorniLavorativi(quanti));
@@ -2260,10 +2464,10 @@ const SITUAZIONE = {
       fare: !c.ricontatto_il
         ? `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.`
         : (forum && oggi
-            ? `<b>Oggi è l'ultimo giorno dei tre mesi in regalo.</b> Mandagli il messaggio qui accanto:
+            ? `<b>Oggi è l'ultimo giorno del codice FC20.</b> Mandagli il messaggio qui accanto:
                dice che scade, e gli lascia l'uscita se non se la sente.`
             : forum
-              ? `I tre mesi in regalo scadono <b>${giornoLungo(c.ricontatto_il)}</b>: quel giorno torna in
+              ? `Il codice FC20 scade <b>${giornoLungo(c.ricontatto_il)}</b>: quel giorno torna in
                  cima e il pulsante propone il messaggio della scadenza.`
               : `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`) };
   },
@@ -2398,10 +2602,10 @@ UNA Hotels Expo Fiera Milano, Via Giovanni Keplero 12, 20016 Pero (MI)
 Quattro round di speed meeting, 36 persone conosciute nella giornata, pranzo incluso.
 I tavoli non sono composti a mano: li calcola MigaMATCH incrociando oltre 4 milioni di parametri, e a ogni possibile coppia di partecipanti assegna un punteggio da 1 a 10. I concorrenti restano lontani, i profili complementari finiscono allo stesso tavolo.
 La sala è da 250 posti. Il sito è questo: www.forumconnections.com
-L'offerta che ti ho riservato è un abbonamento MigaMATCH di 3 mesi con 9 persone in target garantite e match illimitati, del valore di 90 euro, in omaggio per te. Ne abbiamo solo 50 in tutto e li gestiamo a mano: il tuo lo blocco fino al ${p.data}.
+L'offerta che ti ho riservato è il 20% di sconto sul biglietto con il codice FC20: te lo toglie il checkout in automatico dal prezzo di oggi. Vale se lo usi entro il ${p.data}.
 
 QUELLO CHE ABBIAMO DECISO
-Come da accordi mi hai confermato che riuscirai a fare l'iscrizione e accaparrarti l'offerta dei 3 mesi MigaMATCH entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là, ma perderai l'offerta.
+Come da accordi mi hai confermato che riuscirai a fare l'iscrizione e usare il codice FC20 entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là, ma perderai lo sconto.
 
 IL TUO LINK PERSONALE
 ${p.link} — prezzo in vigore oggi: ${p.prezzo}, pranzo incluso.
@@ -2457,7 +2661,7 @@ Come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${
 
 Il tuo link personale, prezzo di oggi ${p.prezzo}: ${p.link}
 
-P.S. Ti ho tenuto da parte uno dei tre mesi di MigaMATCH completo in regalo — *ne abbiamo solo 50 in tutto* e li gestiamo a mano. Il tuo lo blocco fino al ${p.data}.`,
+P.S. Ti ho tenuto da parte il 20% di sconto sul biglietto — codice *FC20*, te lo toglie il checkout in automatico. Vale fino al ${p.data}.`,
 
   /* Parte dopo la chiamata di cortesia a chi ha gia' pagato (script 06).
      Non contiene offerte ne' prezzi: chi lo riceve ha gia' comprato, e
@@ -2483,17 +2687,17 @@ Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.
      ricordare male. */
   /* Ci sta pensando: non ha promesso niente, e infatti qui non si mette per
      iscritto nessun impegno. Si conferma solo quando ci si risente. */
-  /* Il terzo giorno: e' l'ultimo in cui il regalo vale. Dice la scadenza,
+  /* Il terzo giorno: e' l'ultimo in cui il codice vale. Dice la scadenza,
      ricorda cosa perde, e offre l'uscita pulita — «chiudo qui» invece di
      «archivio la tua anagrafica», che suona come una minaccia d'ufficio. */
   ci_pensa_scade: p =>
 `Ciao ${p.nome}, sono ${p.op}.
 
-Oggi scade quello che ti avevo tenuto da parte: *tre mesi di MigaMATCH in regalo*, del valore di 90 €, insieme al biglietto. Sono almeno *nove contatti in target* scelti dall'algoritmo — commercialisti, consulenti, avvocati, professionisti che con le aziende che cerchi tu ci parlano tutti i giorni.
+Oggi scade quello che ti avevo tenuto da parte: il *20% di sconto sul biglietto* con il codice *FC20*, valido sul prezzo di oggi.
 
-Non vedo ancora la tua iscrizione. Il biglietto resta comunque disponibile anche più avanti su www.forumconnections.com, finché ci sono posti — solo senza il regalo. Tieni conto che dal 1° ottobre il prezzo sale a 199 €.
+Non vedo ancora la tua iscrizione. Il biglietto resta comunque disponibile anche più avanti su www.forumconnections.com, finché ci sono posti — solo senza lo sconto. Tieni conto che dal 1° ottobre il prezzo sale a 199 €.
 
-Se invece lo vuoi prendere ora, questo è il tuo link — prezzo di oggi ${p.prezzo}: ${p.link}
+Se invece lo vuoi prendere ora, questo è il tuo link — prezzo di oggi ${p.prezzo}, con FC20 al checkout: ${p.link}
 
 Dimmi tu: cosa hai deciso?`,
 
@@ -2565,7 +2769,7 @@ const OGGETTI = {
   bene_forum: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
-  ci_pensa_scade: n => `${n}, oggi scadono i tre mesi in regalo`,
+  ci_pensa_scade: n => `${n}, oggi scade il codice FC20`,
   secondo_giorno: n => `${n}, ho provato a cercarti anche oggi`,
   sms_primo: n => `${n}, ti ho cercato`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
@@ -2630,9 +2834,9 @@ function componiMessaggio(c, operatore, opzioni){
   else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
   /* «Ci pensa» non è un impegno: mandargli il recap di una promessa che non ha
      fatto è il modo migliore per irrigidirlo alla telefonata dopo. */
-  /* Il giorno in cui il regalo scade non serve il «ci risentiamo»: serve il
+  /* Il giorno in cui il codice scade non serve il «ci risentiamo»: serve il
      messaggio che dice che oggi e' l'ultimo giorno. Solo per il biglietto —
-     a chi deve ancora profilarsi i tre mesi non si regalano. */
+     a chi deve ancora profilarsi lo sconto FC20 non si applica. */
   else if(esito === 'Ci pensa' && obiettivo === 'forum' && scadenzaArrivata(c)){
                                     quale = 'ci_pensa_scade';         tipo = 'promemoria'; }
   else if(esito === 'Ci pensa'){    quale = 'ci_pensa';               tipo = 'economy'; }
