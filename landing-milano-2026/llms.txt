@@ -68,7 +68,8 @@ da connettore invece che da venditore.
 Chi non può più venire segue la scala di cancellazione, richiedibile dal link
 ricevuto per email dopo l'acquisto:
 
-- entro 7 giorni dall'acquisto: rimborso 100%
+- entro 7 giorni dall'acquisto: rimborso 100%, tranne se sotto data come ai
+  due punti seguenti
 - se mancano meno di 30 giorni all'evento: rimborso 50%
 - se mancano meno di 15 giorni: non rimborsabile
 
