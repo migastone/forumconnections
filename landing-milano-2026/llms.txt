@@ -62,21 +62,8 @@ da connettore invece che da venditore.
   l'algoritmo restituisce subito il primo abbinamento, per provare il networking
   AI prima dell'evento
 - Il canale Telegram esclusivo dei partecipanti
-- La garanzia «Matchato o rimborsato»
 
-## Garanzia «Matchato o rimborsato»
-
-Se **entro le 12.00 del 17 ottobre** il sistema non convince, si chiede il rimborso
-alla cassa e si riceve **l'intero biglietto** sullo stesso metodo di pagamento,
-**entro il lunedì successivo**. Nessun modulo, nessuna motivazione richiesta.
-
-A mezzogiorno il partecipante ha già fatto due dei quattro giri, cioè 18 incontri
-su 36: giudica metà evento, non una promessa.
-
-Unica condizione: si chiede **entro le 12.00, prima del pranzo**, e chi lo richiede
-lascia l'evento senza il pranzo.
-
-## Rimborsi per rinuncia (diversi dalla garanzia)
+## Rimborsi
 
 Chi non può più venire segue la scala di cancellazione, richiedibile dal link
 ricevuto per email dopo l'acquisto:
@@ -84,9 +71,6 @@ ricevuto per email dopo l'acquisto:
 - entro 7 giorni dall'acquisto: rimborso 100%
 - se mancano meno di 30 giorni all'evento: rimborso 50%
 - se mancano meno di 15 giorni: non rimborsabile
-
-La garanzia «Matchato o rimborsato» è un'altra cosa e non segue questa scala:
-riguarda chi viene e prova, non chi rinuncia.
 
 ## Chi partecipa
 
