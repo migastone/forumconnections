@@ -17,11 +17,10 @@
   const PIXEL_ID = '838485425972882';
   const SKU_BIGLIETTO = 'MM_FORUM_MI_20261017';
 
-  /* Prezzi degli SKU secondari: sono fissi in pagina (aziende/, upsell/).
+  /* Prezzi degli SKU secondari: sono fissi in pagina (aziende/).
      Il biglietto base NON sta qui: lo decide LISTINO, vedi valoreDi(). */
   const PREZZI = {
-    'MM_FORUM_MI_20261017_AZIENDA': 599,
-    'MM_FORUM_MI_20261017_CENA': 49
+    'MM_FORUM_MI_20261017_AZIENDA': 599
   };
 
   /* Parametri richiesti dall'attribuzione Meta/Google, nell'ordine in cui

@@ -53,7 +53,7 @@ del repo è archivio o materiale di lavoro.
 2. **Il prezzo non si scrive a mano.** Lo decide la data: `LISTINO` in `index.html` e gli
    elementi `[data-prezzo]` / `.price[data-fino]`. Per cambiare uno scaglione si tocca solo
    `LISTINO`. Il checkout sono link diretti a `auto.migamatch.com/shop?sku=…`
-   (`MM_FORUM_MI_20261017`, `…_AZIENDA`, `…_CENA`) marcati `data-cta="checkout"`.
+   (`MM_FORUM_MI_20261017`, `…_AZIENDA`) marcati `data-cta="checkout"`.
 
 3. **`__COMMIT__` in `staff/index.html` è un segnaposto, non un bug.** Il workflow lo sostituisce
    con lo SHA e genera `VERSIONE.txt`: la pagina confronta i due e avvisa l'operatore quando sta
@@ -90,11 +90,16 @@ del repo è archivio o materiale di lavoro.
    valle si aspetta. Se cambiano le finalità del trattamento, va alzato `VERSIONE` in
    `consenso.js`, altrimenti chi ha già risposto non rivede il banner.
 
-10. **`PREZZI` in `tracciamento-meta.js` duplica due cifre.** Il biglietto base lo legge da
-    `LISTINO`, ma 599 € (azienda) e 49 € (cena) sono scritti a mano lì dentro *e* nelle rispettive
-    pagine. Cambiarli in un posto solo fa riportare a Meta un valore diverso da quello incassato.
+10. **`PREZZI` in `tracciamento-meta.js` duplica una cifra.** Il biglietto base lo legge da
+    `LISTINO`, ma 599 € (azienda) è scritto a mano lì dentro *e* in `aziende/index.html`.
+    Cambiarlo in un posto solo fa riportare a Meta un valore diverso da quello incassato.
     Finché restano due posti, si toccano insieme. La via d'uscita è un `data-valore="599"` sul
     link del checkout, così la cifra la possiede la pagina come già fa `LISTINO` per il biglietto.
+
+11. **L'apericena delle 19.30 non esiste più.** Il 22 settembre 2026 è stata tolta da programma,
+    `aziende/`, `upsell/` e `llms.txt`, e con lei lo SKU `…_CENA`. `upsell/` è rimasta come
+    pagina del post-acquisto ma vende solo la camera in convenzione. Se torna, torna dappertutto
+    insieme — programma della home, `llms.txt`, `PREZZI` e i testi della campagna.
 
 ## staff/ — console ricontatti
 
