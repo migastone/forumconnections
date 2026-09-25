@@ -435,11 +435,16 @@ footer a{color:#B9B3DA}
       </div>
     </div>
 
+    <!-- Le cifre di questa fascia discendono tutte dalla capienza e dal formato,
+         e vanno ricalcolate insieme se cambia uno dei due: 250 posti a tavoli da
+         10 fanno 25 tavoli, 4 giri fanno 36 incontri a testa (4 x 9), e in sala
+         4.500 incontri distinti (45 coppie per tavolo x 25 tavoli x 4 giri, che e'
+         anche 250 x 36 / 2, perche' ogni incontro conta due persone). -->
     <div class="hero-meta">
       <div><b>250</b> ospiti business</div>
       <div><b>36</b> incontri garantiti</div>
       <div><b>38%</b> aziende 1–50 Mln €</div>
-      <div><b>2.700</b> speed meeting</div>
+      <div><b>4.500</b> speed meeting</div>
     </div>
   </div>
 </section>
@@ -543,8 +548,13 @@ footer a{color:#B9B3DA}
 
     <div class="grid g4">
       <div class="card"><span class="num">4 Mln+</span><strong>parametri incrociati</strong><br><span style="font-size:.88rem">prima che la sala apra</span></div>
-      <div class="card"><span class="num">61.250</span><strong>affinità di coppia</strong><br><span style="font-size:.88rem">calcolate e valutate 1–10</span></div>
-      <div class="card"><span class="num">6</span><strong>tavoli per persona</strong><br><span style="font-size:.88rem">composti uno per uno</span></div>
+      <!-- 31.125 = le coppie possibili fra 250 persone (250 x 249 / 2): AIRA le
+           valuta tutte per comporre i tavoli. Se il punteggio diventasse
+           direzionale (A verso B diverso da B verso A) sarebbero 62.250, ma
+           allora la parola giusta non e' piu' «coppia». I tavoli per persona
+           sono i giri: quattro. -->
+      <div class="card"><span class="num">31.125</span><strong>affinità di coppia</strong><br><span style="font-size:.88rem">calcolate e valutate 1–10</span></div>
+      <div class="card"><span class="num">4</span><strong>tavoli per persona</strong><br><span style="font-size:.88rem">composti uno per uno</span></div>
       <div class="card"><span class="num">0</span><strong>posti lasciati al caso</strong><br><span style="font-size:.88rem">nemmeno uno</span></div>
     </div>
 
