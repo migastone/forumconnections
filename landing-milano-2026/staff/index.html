@@ -771,8 +771,11 @@ async function entra(){
   }
   $('#accesso').classList.add('nascosto');
   $('#app').classList.remove('nascosto');
+  /* linea_nome arriva dal server, che risolve il numero di linea come fa l'invio:
+     12 e' la linea di Miriam, gli altri numeri partono dalla linea condivisa. Il numero
+     da solo all'operatrice non diceva da quale telefono sarebbe partito il messaggio. */
   $('#chi').textContent = io.nome + (io.ruolo === 'admin' ? ' · amministratore'
-                          : io.linea_migasender ? ' · linea ' + io.linea_migasender : '');
+                          : (io.linea_nome || io.linea_migasender) ? ' · linea ' + (io.linea_nome || io.linea_migasender) : '');
   ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
   capacitaOra = { capacita: io.capacita, invio_automatico: io.invio_automatico, motivo: io.motivo };
   popolaOperatori();
@@ -2014,15 +2017,20 @@ function prossimoGiornoLavorativo(da){
 /* ═══════════════ gli script di chiamata ═══════════════
    Il testo non vive in questa pagina: sta nella Edge Function, perche' questo
    repo e' pubblico e la traccia di vendita non ha motivo di esserci dentro.
-   Qui si sceglie solo quale dei sei serve, e si mostra.
+   Qui si sceglie solo quale dei sette serve, e si mostra.
 
    La scelta guarda prima l'obiettivo e poi la provenienza, in quest'ordine:
    chi non e' profilato va allo script della profilazione qualunque sia la sua
    storia, perche' in questa fase e' quello l'obiettivo. Gli altri si dividono
    per quanto ci conoscono: chi e' stato a un Forum dal vivo e' il segnale piu'
    forte e vince sugli altri.                                                 */
+/* Lo 07 e' per chi arriva dalle inserzioni Meta del Forum (28 settembre 2026): ha chiesto
+   lui le informazioni, quindi non e' una chiamata a freddo. Sta dopo lo 03 perche' chi e'
+   gia' stato a un Forum dal vivo resta il segnale piu' forte anche se poi ha cliccato
+   un'inserzione. */
 const SCRIPT_PER_FONTE = [
   [f => f.some(x => x.startsWith('forum_')), '03'],
+  [f => f.some(x => x.startsWith('ads_meta_forum')), '07'],
   [f => f.includes('speed_presente'),        '04'],
   [f => f.includes('speed_iscritto'),        '05'],
   [f => f.includes('bigbang_profilato'),     '02']
@@ -3026,7 +3034,7 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
       <div class="azioni">
         <button class="btn oro" data-invia>${canale === 'sms' ? 'Manda l\'SMS' : canale === 'email'
           ? ('Invia da ' + (io?.email_mittente || 'il tuo indirizzo'))
-          : ('Invia dalla linea ' + (io?.linea_migasender ? io.linea_migasender : 'Migasender'))}</button>
+          : ('Invia dalla linea ' + (io?.linea_nome || io?.linea_migasender || 'Migasender'))}</button>
         ${canale === 'sms' ? '' : `<button class="btn" data-mano>${canale === 'email'
           ? 'Copia il testo e segnalo inviato a mano' : 'Invia a mano con WhatsApp Web'}</button>`}
       </div>
@@ -3133,7 +3141,7 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
           ? 'Email inviata da ' + (io?.email_mittente || 'il tuo indirizzo') + '.'
           : canale === 'sms'
           ? 'SMS partito. Arriva da «MigaMATCH», quindi non possono rispondere: il numero per richiamarti è dentro al testo.'
-          : 'Inviato dalla linea Migasender.') + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
+          : 'Inviato dalla linea ' + (io?.linea_nome || 'Migasender') + '.') + (r.riferimento ? ' ' + r.riferimento : ''), 'ok');
         if(dopo) dopo();
         setTimeout(chiudi, 1200);
       }else{
