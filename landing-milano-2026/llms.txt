@@ -1,4 +1,4 @@
-# Forum Connections — Milano, sabato 17 ottobre 2026
+# Forum Connections, Milano, sabato 17 ottobre 2026
 
 > Evento di networking B2B dal vivo in cui i tavoli non li scegli tu: li compone
 > l'app MigaMATCH con l'algoritmo AIRA©, incrociando oltre 4 milioni di parametri.
@@ -32,10 +32,10 @@ dei contenuti: settembre 2026.
 
 ### I tre giri di parola (60 secondi ciascuno)
 
-1. **Chi sei** — il problema che risolvi, e perché lo risolvi meglio di altri.
-2. **Chi cerchi** — il tuo cliente ideale, descritto in modo specifico e con un
+1. **Chi sei**: il problema che risolvi, e perché lo risolvi meglio di altri.
+2. **Chi cerchi**: il tuo cliente ideale, descritto in modo specifico e con un
    esempio concreto. «Le aziende» non è una risposta.
-3. **Chi puoi aiutare** — il giro contro-intuitivo: di te non parli più. Hai
+3. **Chi puoi aiutare**: il giro contro-intuitivo: di te non parli più. Hai
    ascoltato e preso appunti, e provi ad aprire una porta a qualcuno del tavolo
    con la tua rete, senza fare nomi. È il giro in cui, per riflesso, qualcun
    altro apre una porta a te.
@@ -87,7 +87,7 @@ se nasce una sinergia.
 contatti business. Per 250 persone sedute ai tavoli fanno circa **62.500 aziende di
 primo livello, in oltre venti settori diversi**.
 
-Il punto del formato: qui non trovi il tuo cliente — trovi chi ci parla già, ha la
+Il punto del formato: qui non trovi il tuo cliente: trovi chi ci parla già, ha la
 sua fiducia e può presentartelo. L'obiettivo sono sinergie che durano nel tempo.
 
 Sulla home del sito c'è uno strumento che mostra, settore per settore, quante
@@ -95,30 +95,30 @@ persone della rete hanno influenza dove serve a chi chiede.
 
 ## Speaker
 
-- **Sergio Luciano** — Direttore di Economy. Intervento sull'importanza delle
+- **Sergio Luciano**: Direttore di Economy. Intervento sull'importanza delle
   relazioni B2B
-- **Simone Brancozzi** — AI Commercialista, porta in dote 850 commercialisti
+- **Simone Brancozzi**: AI Commercialista, porta in dote 850 commercialisti
   clienti
-- **Oscar Dalvit** — CEO di Segnalazione Vincente, l'Ingegneria Relazionale
-- **Giuseppe Tringali** — imprenditore, «hai solo 60 secondi»
-- **Andrea Colombo** — esperto di leadership relazionale. Intervento «Il Talento
+- **Oscar Dalvit**: CEO di Segnalazione Vincente, l'Ingegneria Relazionale
+- **Giuseppe Tringali**: imprenditore, «hai solo 60 secondi»
+- **Andrea Colombo**: esperto di leadership relazionale. Intervento «Il Talento
   al Centro»: il Talento nel renderci unici, attraverso le Relazioni ci da
   l'opportunità di esprimerlo al massimo e trasformarlo in valore per gli altri
-- **Katia Burdet** — l'ABC del public speaking
-- **Lisa Marie Gelhaus** — TEDx e keynote speaker, comunicazione efficace
-- **Giuseppe Palma** — relazioni internazionali
-- **Antonio Pasqualin** — CEO BlueChain, fondatore del Blockchain Revolution Summit
-- **Emanuele Properzi** — CEO di Bookness.it, esperto di self publishing strategico
+- **Katia Burdet**: l'importanza del feedback
+- **Lisa Marie Gelhaus**: TEDx e keynote speaker, comunicazione efficace
+- **Giuseppe Palma**: relazioni internazionali
+- **Antonio Pasqualin**: CEO BlueChain, fondatore del Blockchain Revolution Summit
+- **Emanuele Properzi**: CEO di Bookness.it, esperto di self publishing strategico
   e book marketing: il libro come strumento di costruzione della fiducia nelle relazioni
-- **Giando Santamaria** — intelligenza artificiale applicata al business
-- **Stefania Spadafora** — Chief Investment Officer MigaMATCH, metodo Unicorno
+- **Giando Santamaria**: intelligenza artificiale applicata al business
+- **Stefania Spadafora**: Chief Investment Officer MigaMATCH, metodo Unicorno
 
 Gli speaker non se ne vanno dopo l'intervento: **restano in sala e siedono ai
 tavoli** come tutti gli altri.
 
 ## Partner dell'evento
 
-- **Andrea Pietrini** — fondatore e Chairman di YOURgroup, prima società italiana
+- **Andrea Pietrini**: fondatore e Chairman di YOURgroup, prima società italiana
   di Fractional Management: 300 CFO e manager fractional associati, ciascuno dentro
   2–3 PMI, e oltre il 70% del fatturato del gruppo che arriva da referenze. A Milano
   non è speaker: sostiene il Forum come partner e porta con sé i manager del suo
@@ -126,15 +126,38 @@ tavoli** come tutti gli altri.
 
 ## Programma della giornata
 
-- 09:00 — apertura e registrazione
-- 09:30 — apertura: Oscar Dalvit, Sergio Luciano, Giuseppe Tringali
-- 10:45 — 2 sessioni di speed meeting, alternate agli interventi formativi
-- 12:30 — «Il Talento al Centro» con Andrea Colombo
-- 13:20 — pranzo networking (incluso)
-- 14:35 — Lisa Marie Gelhaus e Giuseppe Palma
-- 15:20 — le ultime 2 sessioni di speed meeting, alternate agli interventi formativi
-- 16:20 — sessione MigaMATCH e intelligenza artificiale nelle relazioni
-- 17:55 — intervento finale, recap, premiazioni e chiusura
+- 09:00, apertura del check-in
+- 09:30, apertura e benvenuto: Oscar Dalvit
+- 09:45, le relazioni B2B: Sergio Luciano, Direttore di Economy
+- 10:00, «Hai solo 60 secondi»: Giuseppe Tringali e Lisa Marie Gelhaus
+- 10:25, **1° giro di speed meeting**
+- 11:05, pausa
+- 11:20, Antonio Pasqualin: la partnership con la fiera AI Digital Tech di
+  Bergamo (https://www.blockchainrevolution.it/)
+- 11:30, AI Commercialista: Simone Brancozzi
+- 11:40, workshop di comunicazione efficace: Lisa Marie Gelhaus
+- 12:00, **2° giro di speed meeting**
+- 12:30, l'artista Matteo Ferretti: le relazioni nel mondo del lusso e dell'arte
+- 12:40, pranzo networking (incluso)
+- 14:00, speech centrale «Il Talento al Centro»: Andrea Colombo
+- 14:20, l'importanza del feedback: Katia Burdet
+- 14:45, **3° giro di speed meeting**
+- 15:15, «Diventa autore del tuo libro»: Emanuele Properzi, partner dell'evento
+- 15:30, intervista a Giuseppe Palma: le relazioni in Europa e a Bruxelles
+- 15:40, il crowdfunding di MigaMATCH: Stefania Spadafora, Chief Investment Officer
+- 15:50, pausa
+- 16:05, AI e relazioni: Giando Santamaria
+- 16:25, Vetrina Professioni Economy e opportunità: Oscar Dalvit
+- 16:45, **4° giro di speed meeting**
+- 17:15, MigaMATCH, come usare l'app al meglio: Oscar Dalvit
+- 17:30, la privacy in MigaMATCH: Clementina Baroni
+- 17:35, come rendere profittevoli i match B2B (strategia nelle relazioni e uso
+  dell'AI per analizzare e imparare): Oscar Dalvit
+- 18:00, dietro le quinte dell'AI e dell'automazione nelle aziende: Ivan Lao e
+  Oscar Dalvit
+- 18:35, «Aiutiamoci», come fare squadra con Segnalazione Vincente: Oscar Dalvit
+- 18:45, interventi finali e chiusura dell'evento
+- 19:00, open networking al bar
 
 Gli orari possono subire lievi variazioni.
 
@@ -175,8 +198,8 @@ Edizioni passate: Firenze (marzo 2025), Rimini (maggio 2025), San Marino
 
 ## Assistenza
 
-Per qualsiasi cosa riguardi l'organizzazione — arrivo, hotel, accompagnatori,
-registrazione, fatturazione:
+Per qualsiasi cosa riguardi l'organizzazione (arrivo, hotel, accompagnatori,
+registrazione, fatturazione):
 
 - **Email**: events@migastone.com
 - **Telefono e WhatsApp**: Walter, +39 335 8022658
@@ -197,7 +220,7 @@ progettare e misurare invece di lasciarla al caso.
 
 ## Partner tecnici
 
-- **Bookness** (https://www.bookness.it) — self publishing strategico e book
+- **Bookness** (https://www.bookness.it): self publishing strategico e book
   marketing: «Diventa Autore del tuo libro Business in 30 giorni»
 
 ## Organizzazione
