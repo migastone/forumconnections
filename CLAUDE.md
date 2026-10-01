@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Cos'è questo repository
 
-La landing dell'evento **Forum Connections — Milano, 17 ottobre 2026**, più il materiale di
+La landing dell'evento **Forum Connections, Milano, 17 ottobre 2026**, più il materiale di
 lavoro che le sta intorno. Sito statico scritto a mano: nessun framework, nessun build step,
 nessun test, nessuna dipendenza da installare. Si modifica l'HTML e si pubblica.
 
@@ -54,6 +54,9 @@ del repo è archivio o materiale di lavoro.
    elementi `[data-prezzo]` / `.price[data-fino]`. Per cambiare uno scaglione si tocca solo
    `LISTINO`. Il checkout sono link diretti a `auto.migamatch.com/shop?sku=…`
    (`MM_FORUM_MI_20261017`, `…_AZIENDA`) marcati `data-cta="checkout"`.
+   Dal 1° ottobre 2026 lo scaglione è uno solo, 199 € fino all'evento: in `LISTINO` gli
+   scaglioni di agosto e settembre restano come storia, e le cifre di riserva scritte
+   nell'HTML (quelle che si vedono senza JavaScript) sono già 199 €.
 
 3. **`__COMMIT__` in `staff/index.html` è un segnaposto, non un bug.** Il workflow lo sostituisce
    con lo SHA e genera `VERSIONE.txt`: la pagina confronta i due e avvisa l'operatore quando sta
@@ -75,7 +78,7 @@ del repo è archivio o materiale di lavoro.
    contatti. Prima di aggiungere file in root, verificare che non ricadano lì.
 
 8. **Il codice base del pixel Meta non sta nelle pagine, ed è voluto.** Se lo si incolla in
-   `<head>` come dice la documentazione di Meta, parte al caricamento — cioè prima che l'utente
+   `<head>` come dice la documentazione di Meta, parte al caricamento, cioè prima che l'utente
    abbia risposto al banner, che è esattamente ciò che per i cookie di profilazione non si può
    fare. Vive dentro `assets/tracciamento-meta.js` e viene iniettato solo quando `FCConsenso` dà
    il via. Chi vuole tracciare qualcosa chiede `FCConsenso.quando(fn)` e si accende se e quando
@@ -99,9 +102,9 @@ del repo è archivio o materiale di lavoro.
 11. **L'apericena delle 19.30 non esiste più.** Il 22 settembre 2026 è stata tolta da programma,
     `aziende/`, `upsell/` e `llms.txt`, e con lei lo SKU `…_CENA`. `upsell/` è rimasta come
     pagina del post-acquisto ma vende solo la camera in convenzione. Se torna, torna dappertutto
-    insieme — programma della home, `llms.txt`, `PREZZI` e i testi della campagna.
+    insieme: programma della home, `llms.txt`, `PREZZI` e i testi della campagna.
 
-## staff/ — console ricontatti
+## staff/: console ricontatti
 
 Pagina che usano gli operatori durante le chiamate. Parla con Supabase (chiave `anon`, pubblica
 per costruzione) attraverso la Edge Function `ricontatti-api`, che **non vive in questo repo**.
@@ -111,14 +114,25 @@ email** (`TESTI`, `OGGETTI`, `SCRIPT_PER_FONTE`).
 Modificare quei testi significa cambiare i messaggi che partono davvero verso i contatti: sono
 copy operativo, non stringhe di esempio.
 
-## sito-forumconnections/ — archivio, non sorgente
+**Lo sconto che danno le setter è FC30** (dal 1° ottobre 2026): 30% sul biglietto base, 139,30 €,
+solo sullo SKU base. Sta in `CODICE_SCONTO` / `QUOTA_SCONTO` e viaggia dentro il link
+(`&coupon=FC30`), lo scontato si calcola dal `LISTINO` della pagina. **FC30 non scade** fino
+all'evento: nessun testo deve presentarlo come se scadesse. Lo stesso codice è nella sequenza
+email automatica delle lead (`communication_templates`, `fc_e1`…`fc_e4`, in MigaMATCH).
+
+Gli **script delle chiamate** non sono qui: la pagina li chiede a `/script/N`, e stanno nella
+Edge Function. Si generano da `Ricontatto DB FC/script/_sorgenti/contenuti.js` (fuori da git,
+istruzioni in `COME-SI-RIGENERA.md`) e si pubblicano dal repo `concierge-dashboard`, sempre
+con `--no-verify-jwt`.
+
+## sito-forumconnections/: archivio, non sorgente
 
 Copia congelata del vecchio sito WordPress + Kartra, scaricata il 17 agosto 2026
 (`pagine-html/`, `testi/`, `asset/`, con `INVENTARIO.md` come mappa). Serve da riferimento per i
 contenuti delle edizioni passate e **descrive un altro evento** (38 tavoli da 8, relatori diversi
 da Milano 2026). Non va aggiornata quando cambia la landing e non viene mai pubblicata.
 
-## campagna-ads-ottobre-2026/ — cartella di lavoro, fuori da git
+## campagna-ads-ottobre-2026/: cartella di lavoro, fuori da git
 
 Strategia, copy delle inserzioni, sequenze email e WhatsApp, spezzoni video e locandine
 pronte per la campagna Meta di Milano 2026. E' in `.gitignore` e non va mai committata:
@@ -148,6 +162,14 @@ su 2.142 e la pagina lo dichiara apertamente. Quei numeri sono verificabili da c
 arrotondarli né estenderli oltre quello che il commento in testa al file autorizza.
 
 ## Stile
+
+**Il trattino lungo non si usa mai.** Ne' l'em dash `—` ne' la lineetta media usata come
+incidentale: non nelle risposte in chat, non nelle analisi, non nel copy delle inserzioni,
+non nei messaggi WhatsApp o email, non nei commenti del codice, non in questo file. Al suo
+posto vanno virgola, due punti, punto e virgola, parentesi, oppure due frasi separate.
+E' il tic che fa riconoscere un testo generato, e qui i testi li firma una persona vera:
+i messaggi ai lead partono dal numero di Miriam, le locandine portano il nome di un relatore.
+(Oscar, 28 settembre 2026.)
 
 I commenti nel codice spiegano **perché** una cosa è fatta così, non cosa fa (il blocco `LISTINO`,
 il controllo di versione in `staff/`, la scelta di non mettere `Disallow`). Vale la pena
