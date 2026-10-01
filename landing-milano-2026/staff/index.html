@@ -465,7 +465,7 @@ const SPIEGA_ESITO = {
   'Da Ricontattare':       'Avete parlato e vi siete dati un appuntamento. Se invece il telefono ha squillato a vuoto, chiudi qui e usa il pulsante «Non risponde».',
   'Non risponde':          'Primo squillo a vuoto: si riprova il giorno dopo, alla data qui sotto.',
   'Non raggiungibile':     'Secondo squillo a vuoto: il contatto si archivia e non torna in lista.',
-  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Sul biglietto la data qui sotto è la scadenza del codice FC20 (20% di sconto): la scheda la propone già a tre giorni lavorativi.',
+  'Ci pensa':              'Ha ascoltato tutto ma non ha deciso. Sul biglietto la data qui sotto è il giorno in cui lo richiami: la scheda la propone già a tre giorni lavorativi. FC30 (30% di sconto) non scade, quindi non è una scadenza.',
   'Promette Profilazione': 'Ha promesso di completare il profilo entro la data qui sotto. È quella a farlo tornare in cima.',
   'Profilato - Call back': 'Si è profilato dopo una nostra chiamata: si richiama per il feedback sui primi match.',
   'Viene':                 'Ha detto che viene ma non ha ancora pagato: resta in lavorazione finché non compra.',
@@ -1695,9 +1695,10 @@ async function apriScheda(id){
     /* Un valore di partenza c'è sempre: il primo giorno lavorativo utile alle 9.
        Si può spostare, ed è quella la data in cui il contatto risale in cima. */
     if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value){
-      /* «Ci pensa» su chi deve comprare il biglietto non e' un richiamo
-         qualunque: il codice FC20 vale tre giorni lavorativi, e
-         la data che torna deve essere quella, non il giorno dopo. */
+      /* «Ci pensa» su chi deve comprare il biglietto si richiama dopo tre
+         giorni lavorativi: abbastanza per pensarci, non tanto da dimenticarsi
+         della telefonata. FC30 non scade, quindi la data e' un appuntamento,
+         non una scadenza da annunciare. */
       const quanti = (esito === 'Ci pensa' && obiettivoPer(c) === 'forum') ? 3 : 1;
       q('[data-ricontatto]').value = perInput(giorniLavorativi(quanti));
     }
@@ -2222,14 +2223,28 @@ const PACCHETTI = {
   base:    { sku:'MM_FORUM_MI_20261017',         etichetta:'Biglietto base' },
   azienda: { sku:'MM_FORUM_MI_20261017_AZIENDA', etichetta:'Pacchetto azienda', prezzo:'599 €' }
 };
-const linkAcquisto = q => `https://auto.migamatch.com/shop?sku=${PACCHETTI[q].sku}`;
+/* Lo sconto che danno le setter e' FC30, 30% sul biglietto base (199 € di
+   listino, 139,30 € al checkout). Viaggia dentro il link: con ?coupon= il
+   carrello lo applica da solo, e chi lo riceve non deve digitare niente. Il
+   Pacchetto Azienda resta a 599 €, quindi il suo link il codice non lo porta. */
+const CODICE_SCONTO = 'FC30';
+const QUOTA_SCONTO = 0.30;
+const linkAcquisto = q => `https://auto.migamatch.com/shop?sku=${PACCHETTI[q].sku}`
+  + (q === 'base' ? `&coupon=${CODICE_SCONTO}` : '');
+/* «199 €» → «139,30 €». Il listino resta l'unica fonte: se la cifra cambia,
+   cambia anche lo scontato. */
+function prezzoScontato(prezzo){
+  if(!prezzo) return null;
+  const n = Number(prezzo.replace(/[^\d,]/g,'').replace(',','.'));
+  return (Math.round(n * (1 - QUOTA_SCONTO) * 100) / 100)
+    .toLocaleString('it-IT', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
 
 /* Il prezzo non si scrive a memoria: si legge dal listino del giorno in cui si
-   manda il messaggio. Del listino è confermata solo la prima soglia — 159 €
-   fino al 31 agosto. Le date di passaggio a 179 € e a 199 € non sono state
-   ancora fissate, quindi oltre il 31 agosto questa funzione restituisce null e
-   il popup si rifiuta di mandare il messaggio: meglio fermarsi che scrivere a
-   migliaia di persone un prezzo indovinato.                                  */
+   manda il messaggio. Dal 1° ottobre lo scaglione e' uno solo, 199 €, fino
+   all'evento; dopo il 17 ottobre la funzione restituisce null e il popup si
+   rifiuta di mandare il messaggio: meglio fermarsi che scrivere a migliaia di
+   persone un prezzo indovinato.                                              */
 const LISTINO = [
   { fino: '2026-08-31', prezzo: '159 €' },
   { fino: '2026-09-30', prezzo: '179 €' },
@@ -2472,11 +2487,11 @@ const SITUAZIONE = {
       fare: !c.ricontatto_il
         ? `Nessuna data di richiamo segnata: senza una data torna in fondo alla lista.`
         : (forum && oggi
-            ? `<b>Oggi è l'ultimo giorno del codice FC20.</b> Mandagli il messaggio qui accanto:
-               dice che scade, e gli lascia l'uscita se non se la sente.`
+            ? `<b>Oggi è il giorno in cui gli avevi detto che l'avresti risentito.</b> Mandagli il
+               messaggio qui accanto: gli ricorda FC30 e gli chiede cosa ha deciso.`
             : forum
-              ? `Il codice FC20 scade <b>${giornoLungo(c.ricontatto_il)}</b>: quel giorno torna in
-                 cima e il pulsante propone il messaggio della scadenza.`
+              ? `Lo risenti <b>${giornoLungo(c.ricontatto_il)}</b>: quel giorno torna in cima e il
+                 pulsante propone il messaggio che gli ricorda FC30.`
               : `Si risente <b>${giornoLungo(c.ricontatto_il)}</b>${inRitardo(c.ricontatto_il) ? ' — <b>ed è già passato</b>' : ''}.`) };
   },
 
@@ -2605,21 +2620,24 @@ Se mi dici un orario buono ti richiamo io, il tempo di due domande, ho una propo
 ti scrivo il riassunto della telefonata di oggi, così resta scritto da qualche parte.
 
 L'EVENTO
-Forum Connections — sabato 17 ottobre 2026, dalle 9.00 alle 19.00
+Forum Connections, sabato 17 ottobre 2026, dalle 9.00 alle 19.00
 UNA Hotels Expo Fiera Milano, Via Giovanni Keplero 12, 20016 Pero (MI)
 Quattro round di speed meeting, 36 persone conosciute nella giornata, pranzo incluso.
 I tavoli non sono composti a mano: li calcola MigaMATCH incrociando oltre 4 milioni di parametri, e a ogni possibile coppia di partecipanti assegna un punteggio da 1 a 10. I concorrenti restano lontani, i profili complementari finiscono allo stesso tavolo.
 La sala è da 250 posti. Il sito è questo: www.forumconnections.com
-L'offerta che ti ho riservato è il 20% di sconto sul biglietto con il codice FC20: te lo toglie il checkout in automatico dal prezzo di oggi. Vale se lo usi entro il ${p.data}.
-
+${p.scontato ? `L'offerta che ti ho riservato è il 30% di sconto sul biglietto con il codice ${p.codice}: con il link qui sotto il checkout lo applica da solo, e invece di ${p.prezzo} paghi ${p.scontato}.
+` : ''}
 QUELLO CHE ABBIAMO DECISO
-Come da accordi mi hai confermato che riuscirai a fare l'iscrizione e usare il codice FC20 entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là, ma perderai lo sconto.
+${p.scontato
+  ? `Come da accordi mi hai confermato che riuscirai a fare l'iscrizione con il codice ${p.codice} entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là.`
+  : `Come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il ${p.data}: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là.`}
 
 IL TUO LINK PERSONALE
-${p.link} — prezzo in vigore oggi: ${p.prezzo}, pranzo incluso.
+${p.link}
+${p.scontato ? `${p.scontato} invece di ${p.prezzo}, pranzo incluso.` : `Prezzo: ${p.prezzo}.`}
 
 IL REGALO DI CUI TI PARLAVO
-La copia di Economy di settembre, l'inserto del Sole 24 Ore: https://mssl.it/economy22 — dentro parliamo di reciprocità e trovi un caso studio.
+La copia di Economy di settembre, l'inserto del Sole 24 Ore: https://mssl.it/economy22. Dentro parliamo di reciprocità e trovi un caso studio.
 
 Se ti viene un dubbio, rispondi a questa mail o scrivimi su WhatsApp: rispondo io.
 
@@ -2659,15 +2677,17 @@ A presto
 ${p.op}`,
 
   bene_forum: p =>
-`Ciao ${p.nome}, grazie della chiacchierata — ${p.op} di ${p.brand}.
+`Ciao ${p.nome}, grazie della chiacchierata, sono ${p.op} di ${p.brand}.
 
 Ti scrivo il riassunto così ce l'hai nero su bianco. *Forum Connections, sabato 17 ottobre, dalle 9 alle 19.00*, UNA Hotels Expo Fiera, Via Giovanni Keplero 12, Pero (MI). Quattro round, 36 persone conosciute, pranzo incluso. La sala è da 250 posti.
 
 Come da accordi mi hai confermato che riuscirai a fare l'iscrizione entro il *${p.data}*: se non vedo l'iscrizione ti chiamo il giorno dopo per verificare se ci sono intoppi, altrimenti ti richiamo più in là.
 
-Il tuo link personale, prezzo di oggi ${p.prezzo}: ${p.link}
+${p.scontato
+  ? `Il tuo link personale, con lo sconto già applicato: ${p.link}
 
-P.S. Ti ho tenuto da parte il 20% di sconto sul biglietto — codice *FC20*, te lo toglie il checkout in automatico. Vale fino al ${p.data}.`,
+P.S. Ti ho tenuto da parte il 30% di sconto sul biglietto, codice *${p.codice}*: con il link qui sopra il checkout lo applica da solo e paghi ${p.scontato} invece di ${p.prezzo}.`
+  : `Il tuo link personale, ${p.prezzo}: ${p.link}`}`,
 
   /* Parte dopo la chiamata di cortesia a chi ha gia' pagato (script 06).
      Non contiene offerte ne' prezzi: chi lo riceve ha gia' comprato, e
@@ -2693,17 +2713,18 @@ Se a quell'ora non ti va più bene scrivimi qui e lo spostiamo, nessun problema.
      ricordare male. */
   /* Ci sta pensando: non ha promesso niente, e infatti qui non si mette per
      iscritto nessun impegno. Si conferma solo quando ci si risente. */
-  /* Il terzo giorno: e' l'ultimo in cui il codice vale. Dice la scadenza,
-     ricorda cosa perde, e offre l'uscita pulita — «chiudo qui» invece di
-     «archivio la tua anagrafica», che suona come una minaccia d'ufficio. */
+  /* Il terzo giorno, quello del richiamo promesso. FC30 non scade, quindi qui
+     non si annuncia nessuna scadenza: si ricorda lo sconto, si lascia il link
+     con il codice dentro e si chiede cosa ha deciso. Il nome della chiave e'
+     rimasto quello di quando il codice scadeva. */
   ci_pensa_scade: p =>
 `Ciao ${p.nome}, sono ${p.op}.
 
-Oggi scade quello che ti avevo tenuto da parte: il *20% di sconto sul biglietto* con il codice *FC20*, valido sul prezzo di oggi.
+Ci eravamo detti di risentirci oggi. Il *30% di sconto sul biglietto* con il codice *${p.codice}* te l'ho tenuto da parte: ${p.scontato} invece di ${p.prezzo}, pranzo incluso.
 
-Non vedo ancora la tua iscrizione. Il biglietto resta comunque disponibile anche più avanti su www.forumconnections.com, finché ci sono posti — solo senza lo sconto. Tieni conto che dal 1° ottobre il prezzo sale a 199 €.
+Non vedo ancora la tua iscrizione. Se lo vuoi prendere, questo è il tuo link, con ${p.codice} già applicato: ${p.link}
 
-Se invece lo vuoi prendere ora, questo è il tuo link — prezzo di oggi ${p.prezzo}, con FC20 al checkout: ${p.link}
+I posti in sala sono 250.
 
 Dimmi tu: cosa hai deciso?`,
 
@@ -2769,13 +2790,13 @@ const OGGETTI = {
   quattro_a: n => `${n}, il tuo profilo MigaMATCH e il regalo di Economy`,
   quattro_b: n => `${n}, il Forum Connections del 17 ottobre a Milano`,
   quattro_c: n => `${n}, il 17 ottobre a Milano, dal vivo`,
-  email_promesso: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
+  email_promesso: n => `${n}, il riassunto della nostra telefonata: Forum Connections, 17 ottobre`,
   bene_profilazione: n => `${n}, il riassunto della nostra telefonata`,
   promessa_scaduta: n => `${n}, il link del profilo — te lo lascio qui`,
-  bene_forum: n => `${n}, il riassunto della nostra telefonata — Forum Connections, 17 ottobre`,
+  bene_forum: n => `${n}, il riassunto della nostra telefonata: Forum Connections, 17 ottobre`,
   appuntamento: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
   ci_pensa: n => `${n}, ci risentiamo come d'accordo — e intanto ecco Economy`,
-  ci_pensa_scade: n => `${n}, oggi scade il codice FC20`,
+  ci_pensa_scade: n => `${n}, ci risentiamo come d'accordo`,
   secondo_giorno: n => `${n}, ho provato a cercarti anche oggi`,
   sms_primo: n => `${n}, ti ho cercato`,
   solo_economy: n => `${n}, la copia di Economy come promesso`,
@@ -2840,9 +2861,9 @@ function componiMessaggio(c, operatore, opzioni){
   else if(esito === 'Non interessato'){ quale = 'solo_economy';        tipo = 'economy'; }
   /* «Ci pensa» non è un impegno: mandargli il recap di una promessa che non ha
      fatto è il modo migliore per irrigidirlo alla telefonata dopo. */
-  /* Il giorno in cui il codice scade non serve il «ci risentiamo»: serve il
-     messaggio che dice che oggi e' l'ultimo giorno. Solo per il biglietto —
-     a chi deve ancora profilarsi lo sconto FC20 non si applica. */
+  /* Il giorno del richiamo non serve il «ci risentiamo»: ci si sta gia'
+     risentendo, e il messaggio giusto e' quello che ricorda FC30 con il link.
+     Solo per il biglietto: a chi deve ancora profilarsi lo sconto non si applica. */
   else if(esito === 'Ci pensa' && obiettivo === 'forum' && scadenzaArrivata(c)){
                                     quale = 'ci_pensa_scade';         tipo = 'promemoria'; }
   else if(esito === 'Ci pensa'){    quale = 'ci_pensa';               tipo = 'economy'; }
@@ -2861,7 +2882,11 @@ function componiMessaggio(c, operatore, opzioni){
 
   const pacchetto = o.pacchetto === 'azienda' ? 'azienda' : 'base';
   const data = dataImpegno(c, esito);
-  const prezzo = pacchetto === 'azienda' ? PACCHETTI.azienda.prezzo : prezzoDelGiorno();
+  /* Il messaggio della scadenza parla solo del codice: il link e' sempre
+     quello del biglietto base, anche se in chiamata era uscito il pacchetto. */
+  const pacchettoLink = quale === 'ci_pensa_scade' ? 'base' : pacchetto;
+  const prezzo = pacchettoLink === 'azienda' ? PACCHETTI.azienda.prezzo : prezzoDelGiorno();
+  const scontato = pacchettoLink === 'base' ? prezzoScontato(prezzo) : null;
   const edizione = edizioneForum(c);
 
   const mancano = [];
@@ -2872,12 +2897,13 @@ function componiMessaggio(c, operatore, opzioni){
      dire da dove arrivera' la chiamata. */
   if(quale === 'sms_primo' && !(io && io.telefono)) mancano.push('il numero da cui richiami');
   if(quale === 'email_promesso' && !data) mancano.push('data');
-  if((quale === 'bene_forum' || quale === 'email_promesso') && !prezzo) mancano.push('prezzo');
+  if((quale === 'bene_forum' || quale === 'email_promesso' || quale === 'ci_pensa_scade') && !prezzo) mancano.push('prezzo');
   if(quale === 'quattro_b' && !edizione) mancano.push('edizione');
 
   const p = { nome, op, edizione,
               brand: BRAND_VARIANTE[quale] ?? brand,
-              data, prezzo, link: linkAcquisto(pacchetto),
+              data, prezzo, scontato, codice: CODICE_SCONTO,
+              link: linkAcquisto(pacchettoLink),
               linkProfilo: LINK_PROFILO, linkGuida: LINK_GUIDA,
               /* nome di battesimo: nell'SMS il cognome sono caratteri buttati */
               opNome: (op || '').trim().split(/\s+/)[0] || op,
@@ -2943,7 +2969,7 @@ const COSA_PARTE = {
   bene_forum:         'recap e link del biglietto',
   appuntamento:       'conferma dell\'appuntamento',
   ci_pensa:           'ci risentiamo, con Economy',
-  ci_pensa_scade:     'oggi scade il regalo',
+  ci_pensa_scade:     'giorno del richiamo · FC30 e link',
   secondo_giorno:     'ultimo tentativo',
   solo_economy:       'solo Economy',
   email_promesso:     'riassunto e offerta'
@@ -3022,8 +3048,8 @@ function apriComposizione(c, canale, chiamataId, dopo, opzioni){
 
       ${(m.quale === 'bene_forum' || m.quale === 'email_promesso') ? `<label>Cosa gli stai proponendo</label>
         <select class="campo" data-pacchetto>
-          <option value="base">Biglietto base — prezzo del listino di oggi</option>
-          <option value="azienda">Pacchetto azienda — 599 €</option>
+          <option value="base">Biglietto base, 199 € con FC30 al 30%: 139,30 €</option>
+          <option value="azienda">Pacchetto azienda, 599 € (senza FC30)</option>
         </select>` : ''}
 
       <label>Testo del messaggio</label>
