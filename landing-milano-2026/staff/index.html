@@ -183,7 +183,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .testo-script .obz{margin:0 0 10px}
 .testo-script .obz b{display:block;color:var(--navy)}
 .mantenuta{color:#22603F;font-weight:700}
-.richiamo{color:var(--tenue);font-size:.82rem}
+.richiamo{color:#22603F;font-weight:700}
 .conferma{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;background:#1B5E3B;
   color:#fff;padding:11px 20px;border-radius:10px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.28);
   max-width:90vw;text-align:center}
@@ -923,12 +923,11 @@ function riga(r){
       <div class="meta">${esc(r.telefono || '—')} · ${esc(r.fascia || '')}${r.azienda ? ' · ' + esc(r.azienda) : ''}</div>
     </div>
     <div class="destra">
-      <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b></div>
+      <div><b>${esc(r.ultimo_esito || 'Da Contattare')}</b>${!r.chiuso && (r.prossima_azione || r.ricontatto_il)
+        ? ` <span class="richiamo">· ${richiamoCorto(r.prossima_azione || r.ricontatto_il)}</span>` : ''}</div>
       ${profilatoDopoLaChiamata(r)
         ? `<div class="mantenuta">✓ si è profilato${r.profilato_il ? ' il ' + new Date(r.profilato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : ''}</div>`
         : ''}
-      ${!r.chiuso && (r.prossima_azione || r.ricontatto_il)
-        ? `<div class="richiamo">richiamo ${richiamoCorto(r.prossima_azione || r.ricontatto_il)}</div>` : ''}
       <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
       <div>${etichettaAssegnato(r)}</div>
     </div>
@@ -1533,9 +1532,9 @@ async function apriScheda(id){
           : e.profilazione === 'a-meta'
           ? `<div class="evento-meta">⚠ Ha aperto la profilazione e non l'ha completata · ${dataOra(e.quando)}</div>`
           : `<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
-              <b>${esc(e.chiamata.esito||'—')}</b> · ${dataOra(e.chiamata.iniziata_il)} · ${esc(e.chiamata.operatore||'')}
-              ${e.chiamata.ricontatto_il && !e.chiamata.esito_terminale
-                ? ` · <b>richiamo ${richiamoCorto(e.chiamata.ricontatto_il)}</b>` : ''}
+              <b>${esc(e.chiamata.esito||'—')}</b>${e.chiamata.ricontatto_il && !e.chiamata.esito_terminale
+                ? ` <b style="color:#22603F">· richiamo ${richiamoCorto(e.chiamata.ricontatto_il)}</b>` : ''}
+              · ${dataOra(e.chiamata.iniziata_il)} · ${esc(e.chiamata.operatore||'')}
               ${durataChiamata(e.chiamata.durata_secondi)
                 ? ` · <b>${durataChiamata(e.chiamata.durata_secondi)}</b>`
                 : (e.chiamata.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
