@@ -183,6 +183,10 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
 .testo-script .obz{margin:0 0 10px}
 .testo-script .obz b{display:block;color:var(--navy)}
 .mantenuta{color:#22603F;font-weight:700}
+.richiamo{color:var(--tenue);font-size:.82rem}
+.conferma{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;background:#1B5E3B;
+  color:#fff;padding:11px 20px;border-radius:10px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.28);
+  max-width:90vw;text-align:center}
 /* La profilazione arrivata dopo la nostra chiamata e' la cosa piu' importante
    che possa esserci in una scheda: se e' una riga fra le altre, non si vede. */
 .fatta{margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#E2F1E8;
@@ -502,6 +506,27 @@ let capacitaOra = null;
 const $ = s => document.querySelector(s);
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dataOra = v => v ? new Date(v).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+/* «mar 6 ott, 9:00». Nello storico la data accanto all'esito e' quella in cui e'
+   stata registrata la chiamata, non quella del richiamo, e nella riga della lista
+   il richiamo non compariva da nessuna parte: due operatrici in due giorni hanno
+   salvato la stessa scheda piu' volte convinte che la data non fosse stata presa. */
+const richiamoCorto = v => {
+  if(!v) return '';
+  const d = new Date(v);
+  return d.toLocaleDateString('it-IT',{weekday:'short', day:'numeric', month:'short'})
+       + ', ' + d.toLocaleTimeString('it-IT',{hour:'numeric', minute:'2-digit'});
+};
+
+/* Dopo il salvataggio la scheda si chiude e il contatto resta in lista: senza
+   una parola di conferma sembra che non sia successo niente. */
+function confermaSalvataggio(testo){
+  const el = document.createElement('div');
+  el.className = 'conferma';
+  el.textContent = testo;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
 
 /* La durata di una singola chiamata, al secondo. Arrotondarla ai minuti
    cancellava proprio l'informazione utile: una da 65 secondi e una da 25
@@ -902,6 +927,8 @@ function riga(r){
       ${profilatoDopoLaChiamata(r)
         ? `<div class="mantenuta">✓ si è profilato${r.profilato_il ? ' il ' + new Date(r.profilato_il).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'}) : ''}</div>`
         : ''}
+      ${!r.chiuso && (r.prossima_azione || r.ricontatto_il)
+        ? `<div class="richiamo">richiamo ${richiamoCorto(r.prossima_azione || r.ricontatto_il)}</div>` : ''}
       <div>${r.n_chiamate ? r.n_chiamate + ' tentativi' : 'mai chiamato'}</div>
       <div>${etichettaAssegnato(r)}</div>
     </div>
@@ -1507,6 +1534,8 @@ async function apriScheda(id){
           ? `<div class="evento-meta">⚠ Ha aperto la profilazione e non l'ha completata · ${dataOra(e.quando)}</div>`
           : `<div style="border-top:1px solid var(--bordo);padding:7px 0;font-size:.86rem">
               <b>${esc(e.chiamata.esito||'—')}</b> · ${dataOra(e.chiamata.iniziata_il)} · ${esc(e.chiamata.operatore||'')}
+              ${e.chiamata.ricontatto_il && !e.chiamata.esito_terminale
+                ? ` · <b>richiamo ${richiamoCorto(e.chiamata.ricontatto_il)}</b>` : ''}
               ${durataChiamata(e.chiamata.durata_secondi)
                 ? ` · <b>${durataChiamata(e.chiamata.durata_secondi)}</b>`
                 : (e.chiamata.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
@@ -1797,7 +1826,10 @@ async function apriScheda(id){
           + e.message + '\n\nVa fatta a mano dal backoffice MigaMATCH.');
       }
     }
-    chiudi(); await Promise.all([caricaCoda(true), caricaKpi()]);
+    chiudi();
+    confermaSalvataggio(`Salvato: ${(c.nome||'contatto').trim()}, ${esito}`
+      + (corpo.ricontatto_il && !TERMINALI.has(esito) ? `, richiamo ${richiamoCorto(corpo.ricontatto_il)}` : ''));
+    await Promise.all([caricaCoda(true), caricaKpi()]);
   };
 
   /* ---- riassegnazione: il contatto passa nella coda dell'altra persona ---- */
