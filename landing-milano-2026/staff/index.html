@@ -459,6 +459,12 @@ const ANDATA_BENE = new Set(['Ci pensa','Viene','Promette Profilazione',
    non può «venire» né «aver comprato»: quelle scelte riguardano il biglietto, e
    averle nel menu è solo un modo per sbagliare. */
 const ESITI_FUORI_CONTESTO = {
+  /* Omnia non vende il biglietto del 17 ottobre ne' chiede il profilo: «Non può
+     venire», «Viene» e «Acquistato» parlano del Forum (e «Acquistato» e' quello
+     che la vista riconosce dagli ordini del biglietto, non da un acquisto
+     Omnia), gli altri tre sono del funnel della profilazione. */
+  omnia: new Set(['Viene','Non può venire','Acquistato','Promette Profilazione',
+                  'Profilato - Call back','Non si è profilato']),
   profilazione: new Set(['Viene','Non può venire','Acquistato']),
   forum:        new Set(['Profilato - Call back','Non si è profilato'])
 };
