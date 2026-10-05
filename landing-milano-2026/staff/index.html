@@ -126,6 +126,11 @@ main{padding:16px 18px 60px}
             color:#3730A3;font-weight:700;font-size:.78rem;cursor:pointer}
 .btn-prendi:hover{background:#4F46E5;color:#fff}
 .btn-prendi:disabled{opacity:.55;cursor:default}
+.storico-adesso h4{margin:0 0 4px;font-size:.84rem;color:#3730A3}
+.storico-prima{margin-top:16px;padding:10px 14px;background:#F3F2F7;border:1px solid var(--bordo);border-radius:10px;color:var(--tenue)}
+.storico-prima .sintesi{font-size:.86rem;line-height:1.45;color:var(--testo)}
+.storico-prima .sintesi div{color:var(--tenue);margin-top:2px}
+.storico-prima summary{cursor:pointer;margin-top:8px;font-weight:700;font-size:.84rem;color:#514D77}
 
 /* ---------- scheda ---------- */
 .velo{position:fixed;inset:0;background:rgba(12,10,30,.55);display:grid;place-items:center;padding:16px;z-index:50}
@@ -1573,8 +1578,7 @@ async function apriScheda(id){
                                          profilazione: profiloCompleto(c) ? 'fatta' : 'a-meta' });
         if(!eventi.length) return '';
         eventi.sort((a,b) => new Date(b.quando) - new Date(a.quando));
-        return `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>`
-        + eventi.map(e => e.profilazione === 'fatta'
+        const rigaEvento = e => e.profilazione === 'fatta'
           ? `<div class="evento-prof">✓ Ha completato il profilo su MigaMATCH · ${dataOra(e.quando)}</div>`
           : e.profilazione === 'a-meta'
           ? `<div class="evento-meta">⚠ Ha aperto la profilazione e non l'ha completata · ${dataOra(e.quando)}</div>`
@@ -1587,8 +1591,43 @@ async function apriScheda(id){
               ${durataChiamata(e.chiamata.durata_secondi)
                 ? ` · <b>${durataChiamata(e.chiamata.durata_secondi)}</b>`
                 : (e.chiamata.connessa ? ' · <span style="color:var(--tenue)">non cronometrata</span>' : '')}
-              ${e.chiamata.note?`<div style="color:var(--tenue)">${esc(e.chiamata.note)}</div>`:''}</div>`
-        ).join('');
+              ${e.chiamata.note?`<div style="color:var(--tenue)">${esc(e.chiamata.note)}</div>`:''}</div>`;
+
+        /* Chi e' passato da una campagna all'altra porta con se' la storia di
+           prima, ed e' giusto che la scheda la contenga: sapere cosa ha detto al
+           Forum e' l'aggancio per chiamarlo su Omnia. Ma sta separata da quello
+           che si fa adesso, chiusa, con in vista l'ultima conversazione vera:
+           dopo il passaggio la prima riga della campagna nuova e' un «Da
+           Contattare» di sistema senza nota, e la nota che serve in chiamata
+           resterebbe nascosta. Con un'API che non manda `campagna` non si
+           raggruppa niente. */
+        const mia = c.campagna;
+        const dellAltra = e => mia && e.chiamata && e.chiamata.campagna && e.chiamata.campagna !== mia;
+        const prima = eventi.filter(e => dellAltra(e));
+        const titolo = `<h3 style="font-size:.9rem;margin:20px 0 8px;color:var(--tenue)">Storico</h3>`;
+        if(!prima.length) return titolo + eventi.map(rigaEvento).join('');
+
+        /* Il profilo completato e' della persona, non di una campagna: finisce
+           fra le cose di prima solo se sono di prima le chiamate. */
+        const inPrima = new Set([...prima, ...eventi.filter(e => e.profilazione)]);
+        const adesso = eventi.filter(e => !inPrima.has(e));
+        const vera = prima.find(e => e.chiamata.operatore !== 'Sistema') || prima[0];
+        const nota = (vera.chiamata.note || '').trim();
+        return titolo
+          + `<div class="storico-adesso">
+               <h4>Campagna attuale · ${esc(mia.toUpperCase())}</h4>
+               ${adesso.length ? adesso.map(rigaEvento).join('')
+                 : '<div class="vuoto">Ancora nessuna chiamata in questa campagna.</div>'}
+             </div>
+             <div class="storico-prima">
+               <div class="sintesi"><b>Ultima conversazione ${esc(String(vera.chiamata.campagna).toUpperCase())}</b>:
+                 ${esc(vera.chiamata.esito || '—')} · ${dataOra(vera.chiamata.iniziata_il)} · ${esc(vera.chiamata.operatore || '')}${
+                 nota ? `<div>«${esc(nota.length > 180 ? nota.slice(0, 180) + '…' : nota)}»</div>` : ''}</div>
+               <details>
+                 <summary>Prima, in altre campagne · ${inPrima.size} ${inPrima.size === 1 ? 'voce' : 'voci'}</summary>
+                 ${[...inPrima].sort((a,b) => new Date(b.quando) - new Date(a.quando)).map(rigaEvento).join('')}
+               </details>
+             </div>`;
       })()}
     </div>
    </div>`;
