@@ -1406,8 +1406,11 @@ function disegnaKpi(){
        valore di riferimento per chi non ne ha uno. Con «tutti» il traguardo
        della squadra e' la somma dei singoli, non una moltiplicazione. */
     const squadra = ((io && io.operatori) || []).filter(o => o.ruolo === 'operatore');
+    /* Il traguardo personale si cerca fra tutti, amministratore compreso: chi
+       e' admin e chiama anche lui ha il suo numero (Oscar, 20 dal 6 ottobre).
+       La squadra resta fatta solo di operatori, per il totale con «tutti». */
     const targetDi = id => {
-      const o = squadra.find(x => x.id === id);
+      const o = ((io && io.operatori) || []).find(x => x.id === id);
       return Number(o && o.target_giornaliero) || targetGiornaliero;
     };
     const meta = scelto === 'tutti'
