@@ -141,6 +141,25 @@ main{padding:16px 18px 60px}
             color:#3730A3;font-weight:700;font-size:.78rem;cursor:pointer}
 .btn-prendi:hover{background:#4F46E5;color:#fff}
 .btn-prendi:disabled{opacity:.55;cursor:default}
+.pill.in-crm{background:#E0E7FF;color:#312E81}
+.pill.in-crm.urgente{background:#4F46E5;color:#fff}
+.pill.omnia-no{background:#ECEBF1;color:#6B6880}
+.decisione-omnia{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 12px;
+  border:1px solid #C7D2FE;border-radius:10px;background:#F5F7FF}
+.decisione-omnia .btn{width:auto;padding:9px 15px}
+.decisione-omnia .btn.indaco{background:#4F46E5}
+.decisione-omnia .btn.indaco-chiaro{background:#fff;color:#3730A3;border:1px solid #4F46E5}
+.decisione-omnia small{flex-basis:100%;color:#3730A3;font-size:.8rem}
+.messaggi-omnia{margin:0 0 12px;border:1px solid #C7D2FE;border-radius:10px;background:#fff}
+.messaggi-omnia>summary{cursor:pointer;padding:10px 14px;font-weight:700;font-size:.86rem;color:#3730A3}
+.messaggi-omnia .dentro{padding:0 14px 12px}
+.messaggi-omnia .voce{display:flex;gap:10px;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;padding:8px 0;border-top:1px solid #E0E7FF;font-size:.88rem}
+.messaggi-omnia .voce.suggerito b{color:#4F46E5}
+.messaggi-omnia .voce .btn{width:auto;padding:6px 12px;font-size:.82rem}
+.appuntamenti{margin:-6px 0 14px;padding:9px 16px;border:1px solid #C7D2FE;border-radius:12px;
+  background:#F5F7FF;font-size:.87rem;color:#3730A3}
+.appuntamenti b{font-size:1.05rem}
 .storico-adesso h4{margin:0 0 4px;font-size:.84rem;color:#3730A3}
 .storico-prima{margin-top:16px;padding:10px 14px;background:#F3F2F7;border:1px solid var(--bordo);border-radius:10px;color:var(--tenue)}
 .storico-prima .sintesi{font-size:.86rem;line-height:1.45;color:var(--testo)}
@@ -376,6 +395,7 @@ textarea{width:100%;min-height:92px;padding:10px;border:1px solid var(--bordo);b
   <main>
     <section id="sez-coda">
       <div id="target" class="target nascosto"></div>
+      <div id="appuntamenti" class="appuntamenti nascosto"></div>
       <details id="conversione" class="conv nascosto"></details>
       <div id="fase" class="fase nascosto"></div>
       <p class="conteggio" id="conteggio">Carico…</p>
@@ -451,7 +471,12 @@ async function controllaVersione(){
 const ESITI = ['Da Contattare','Ci pensa','Viene','Non risponde','Non raggiungibile','Da Ricontattare',
                'Promette Profilazione','Profilato - Call back','Non può venire','Acquistato',
                'Non interessato','Richiede disiscrizione','Altro operatore',
-               'Contatto Duplicato','Non si è profilato','Altro'];
+               'Contatto Duplicato','Non si è profilato','Altro','Richiamata'];
+/* «Interessato Omnia» non sta nel menu degli esiti: lo scrivono solo i due
+   pulsanti «Voglio approfondire» e «Chiamatemi», perche' insieme all'esito
+   aprono la scheda in CRM. Scritto a mano, il contatto uscirebbe dalla coda
+   senza che nessun consulente lo sappia. Si cerca col filtro, pero'. */
+const ESITO_INTERESSATO = 'Interessato Omnia';
 const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','distanza/logistica',
                    'deve decidere con socio','ha già partecipato senza concludere',
                    'non ricorda chi siamo','preferisce l\'online','non interessato','altro'];
@@ -463,7 +488,7 @@ const OBIEZIONI = ['non ho tempo','prezzo troppo alto','non è il mio target','d
    parlato; quando invece non risponde, ci si arriva dal pulsante rapido, che
    dichiara lui che non c'e' stata risposta. */
 const SENZA_RISPOSTA = new Set(['Da Contattare','Non risponde','Non raggiungibile','Altro operatore',
-                                'Contatto Duplicato','Non si è profilato']);
+                                'Contatto Duplicato','Non si è profilato','Richiamata']);
 const haRisposto = esito => !SENZA_RISPOSTA.has(esito);
 /* esiti che dicono «ha risposto e l'abbiamo portata a casa»: da qui in poi il
    messaggio da mandare non è più quello di chi non risponde, è il recap. */
@@ -480,8 +505,9 @@ const ESITI_FUORI_CONTESTO = {
      Omnia), gli altri tre sono del funnel della profilazione. */
   omnia: new Set(['Viene','Non può venire','Acquistato','Promette Profilazione',
                   'Profilato - Call back','Non si è profilato']),
-  profilazione: new Set(['Viene','Non può venire','Acquistato']),
-  forum:        new Set(['Profilato - Call back','Non si è profilato'])
+  /* «Richiamata» e' il primo buco di Omnia: sul Forum il primo buco e' «Non risponde». */
+  profilazione: new Set(['Viene','Non può venire','Acquistato','Richiamata']),
+  forum:        new Set(['Profilato - Call back','Non si è profilato','Richiamata'])
 };
 
 /* Quale data serve per quale esito, e se è obbligatoria.
@@ -492,6 +518,7 @@ const ESITI_FUORI_CONTESTO = {
 const CAMPI_ESITO = {
   'Ci pensa':              { ricontatto:'obbligatoria', profilazione:'no' },
   'Non risponde':          { ricontatto:'obbligatoria', profilazione:'no' },
+  'Richiamata':            { ricontatto:'obbligatoria', profilazione:'no' },
   'Non raggiungibile':     { ricontatto:'no',           profilazione:'no' },
   'Da Ricontattare':       { ricontatto:'obbligatoria', profilazione:'no' },
   'Profilato - Call back': { ricontatto:'obbligatoria', profilazione:'no' },
@@ -523,14 +550,16 @@ const SPIEGA_ESITO = {
   'Non si è profilato':    'Aveva promesso e non l\u2019ha fatto. Chiude la lavorazione di adesso, ma resta in archivio: è gente da riprendere più avanti, non gente da buttare.',
   'Contatto Duplicato':    'La stessa persona è già in lista con un\u2019altra scheda. Si archivia qui e si lavora l\u2019altra: niente data, niente nota, salva e vai avanti.',
   'Altro':                 'Nessuna delle altre voci. Spiega nella nota cosa è successo. Senza una data di richiamo futura la pratica si chiude: se invece devi risentirlo, metti la data qui sotto.',
-  'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.'
+  'Da Contattare':         'Rimette il contatto fra quelli ancora da chiamare.',
+  'Richiamata':            'Primo squillo a vuoto su Omnia: lo richiami domattina alle 9 e intanto gli parte il WhatsApp «ti ho cercato».',
+  'Interessato Omnia':     'È passato al CRM con «Voglio approfondire» o «Chiamatemi»: da qui l’esito non si cambia più.'
 };
 const campiPer = e => CAMPI_ESITO[e] || CAMPI_DEFAULT;
 /* esiti che chiudono il contatto: dopo questi non si torna in coda.
    Sono gli stessi che il database calcola in chiamate.esito_terminale.       */
 const TERMINALI = new Set(['Acquistato','Non interessato','Richiede disiscrizione',
                            'Non raggiungibile','Non può venire','Altro operatore',
-                           'Contatto Duplicato','Non si è profilato']);
+                           'Contatto Duplicato','Non si è profilato',ESITO_INTERESSATO]);
 
 /* «Altro» e' chiuso o aperto a seconda della data, quindi l'elenco qui sopra
    da solo non basta: la risposta la calcola il database, che le date le ha.
@@ -843,11 +872,18 @@ async function entra(){
      da solo all'operatrice non diceva da quale telefono sarebbe partito il messaggio. */
   $('#chi').textContent = io.nome + (io.ruolo === 'admin' ? ' · amministratore'
                           : (io.linea_nome || io.linea_migasender) ? ' · linea ' + (io.linea_nome || io.linea_migasender) : '');
-  ESITI.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
+  /* Gli esiti di Omnia nel filtro solo a chi lavora Omnia: sono anche l'unico
+     modo di ritrovare le schede chiuse dalla pagina, che dalla coda escono. */
+  const filtroStati = lavoraOmnia() ? [...ESITI, ESITO_INTERESSATO] : ESITI.filter(s => s !== 'Richiamata');
+  filtroStati.forEach(s => $('#f-stato').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
   capacitaOra = { capacita: io.capacita, invio_automatico: io.invio_automatico, motivo: io.motivo };
   popolaOperatori();
-  await Promise.all([caricaSosia(), caricaKpi()]);
+  await Promise.all([caricaSosia(), caricaKpi(), caricaAppuntamenti()]);
   await caricaCoda(true);
+  if(lavoraOmnia()){
+    caricaMessaggiOmnia();
+    setInterval(caricaAppuntamenti, 5 * 60 * 1000);
+  }
   /* Senza await: la coda e' quello che serve subito, i compratori possono
      arrivare un istante dopo senza far aspettare nessuno. */
   caricaAcquistati();
@@ -931,6 +967,7 @@ async function caricaCoda(azzera = false){
   }catch(e){ $('#conteggio').textContent = 'Errore: ' + e.message; }
 }
 
+
 /* Dal 1 settembre la coda non propone piu' chi deve ancora profilarsi e non
    e' mai stato chiamato: la priorita' passa al biglietto. Chi ha una
    lavorazione aperta resta, perche' lasciarlo a meta' sarebbe peggio. */
@@ -959,6 +996,7 @@ function riga(r){
         ${eOmnia(r)
           ? '<span class="pill omnia">OMNIA</span>'
           : `<span class="pill ${obiettivoPer(r)==='profilazione'?'cta-prof':'cta-forum'}">${obiettivoPer(r)==='profilazione'?'profilazione':'Forum'}</span>`}
+        ${badgeOmnia(r)}
         ${r.pronto_per_forum ? '<span class="pill maturo">pronto</span>' : ''}
         ${r.caldo ? `<span class="pill caldo" title="Entrato in piattaforma negli ultimi 60 giorni e dà 4 o 5 stelle agli incontri fatti">🔥 caldo${
           r.caldo_media ? ' · ' + r.caldo_media : ''}</span>` : ''}
@@ -1400,8 +1438,11 @@ async function apriScheda(id){
   /* Quante volte il telefono ha gia' squillato a vuoto. Serve a sapere se
      questo e' il primo o il secondo tentativo, ora che entrambi si registrano
      con lo stesso esito: prima la differenza la portava il nome dello stato. */
+  /* Si contano solo i buchi della campagna di adesso: chi arriva su Omnia dopo
+     due «Non risponde» del Forum non e' al secondo tentativo, e' al primo. */
   c.tentativi_a_vuoto = storico.filter(x =>
-    x.esito === 'Non risponde' || x.esito === 'Non raggiungibile').length;
+    (x.esito === 'Non risponde' || x.esito === 'Non raggiungibile' || x.esito === 'Richiamata')
+    && (!c.campagna || !x.campagna || x.campagna === c.campagna)).length;
   /* Quante volte ha promesso: la prima e' la promessa, dalla seconda in poi
      sono rinvii. Al secondo rinvio scaduto lo archivia il sistema di notte, e
      la scheda deve poterlo dire prima che l'operatrice ne conceda un terzo. */
@@ -1438,6 +1479,7 @@ async function apriScheda(id){
              ${eOmnia(c)
                ? '<span class="pill omnia">OMNIA</span>'
                : `<span class="pill ${obiettivo==='profilazione'?'cta-prof':'cta-forum'}">${obiettivo==='profilazione'?'CTA: profilazione':'CTA: Forum'}</span>`}
+             ${badgeOmnia(c)}
              ${c.pronto_per_forum?'<span class="pill maturo">pronto per il Forum</span>':''}</div>
 
         ${(() => { const v = provenienza(c); return v.length ? `<div class="origine">
@@ -1530,13 +1572,16 @@ async function apriScheda(id){
         </div>`).join('')}
       </div>` : ''}
 
+      ${htmlDecisioneOmnia(c, 'scheda')}
+      <div data-messaggi-omnia></div>
+
       <div class="azioni">
         <button class="btn oro" data-gestisci>Gestisci contatto</button>
         ${chiuso(c) ? ''
           : `<button class="btn" data-nonrisponde ${c.telefono?'':'disabled'}>${esc(etichettaNonRisponde(c))}</button>`}
         <button class="btn verde" data-wa ${c.telefono?'':'disabled'}>${esc(etichettaMessaggio(msg))}</button>
-        <button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
-          title="SMS breve: arriva da «MigaMATCH» e porta il numero da cui richiami">SMS · ti richiamo domani</button>
+        ${eOmnia(c) ? '' : `<button class="btn" style="background:#2B6CB0" data-sms ${c.telefono?'':'disabled'}
+          title="SMS breve: arriva da «MigaMATCH» e porta il numero da cui richiami">SMS · ti richiamo domani</button>`}
         <button class="btn ${c.promesso_non_pagato||c.acquirente?'oro':''}" data-email ${c.email?'':'disabled'}>${
           esc(etichettaEmail(componiMessaggio(c, undefined, { canale:'email' })))}</button>
         ${ripristinabile(c) ? '<button class="btn" data-ripristina>Rimetti in Da Contattare</button>' : ''}
@@ -1548,6 +1593,7 @@ async function apriScheda(id){
           <span class="cronometro" data-crono>08:00</span>
           <button class="btn" data-fine disabled>Fine chiamata</button>
         </div>
+        ${htmlDecisioneOmnia(c, 'chiamata')}
         <div class="griglia">
           <div>
             <label>Esito</label>
@@ -1660,7 +1706,7 @@ async function apriScheda(id){
      salvataggio — e non all'apertura del riquadro: aprire una scheda per
      guardarla non e' un tentativo, e per un giorno intero ha lasciato in giro
      righe vuote che falsavano i conteggi. */
-  let chiamataId = null, partita = null, finita = null;
+  let chiamataId = null, partita = null, finita = null, dataToccata = false;
 
   const secondiChiamata = () =>
     partita ? Math.max(0, Math.round(((finita || Date.now()) - partita) / 1000)) : null;
@@ -1711,6 +1757,21 @@ async function apriScheda(id){
 
   const chiudi = () => { if(cronometro) clearInterval(cronometro); cronometro = null; velo.remove(); };
   q('[data-chiudi]').onclick = chiudi;
+
+  /* ---- Omnia: la persona ha deciso al telefono ----
+     Gli stessi due bottoni della sua pagina. Il server scrive «Interessato
+     Omnia», apre la scheda in CRM e chiude la mia chiamata aperta: per questo
+     dopo non parte nessun PATCH, e il pannello si chiude e basta. */
+  velo.querySelectorAll('[data-interessato]').forEach(b => {
+    b.onclick = () => segnaInteressato(c, b.dataset.interessato, b, () => {
+      chiudi();
+      caricaCoda(true); caricaKpi(); caricaAppuntamenti();
+    });
+  });
+
+  /* ---- Omnia: i messaggi, presi dal server ---- */
+  if(eOmnia(c) && q('[data-messaggi-omnia]'))
+    disegnaMenuMessaggiOmnia(q('[data-messaggi-omnia]'), c, () => chiamataId);
 
   /* ---- correzione dell'email ----
      L'indirizzo che abbiamo puo' essere vecchio o sbagliato, e da quello
@@ -1775,6 +1836,7 @@ async function apriScheda(id){
        avere gli stessi pulsanti in due posti con due significati diversi era la
        cosa piu' confusa della scheda. */
     q('.azioni').style.display = 'none';
+    if(q('[data-decisione="scheda"]')) q('[data-decisione="scheda"]').style.display = 'none';
     q('[data-form]').classList.remove('nascosto');
     q('[data-esito]').focus();
     aggiornaEtichetteMessaggi();
@@ -1841,7 +1903,15 @@ async function apriScheda(id){
 
     /* Un valore di partenza c'è sempre: il primo giorno lavorativo utile alle 9.
        Si può spostare, ed è quella la data in cui il contatto risale in cima. */
-    if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value){
+    /* Su Omnia la data la propone il server: domani alle 18 dopo «Ci pensa»
+       (e' la data che finisce nel recap), domani alle 9 dopo «Richiamata». Vince
+       su quella gia' nel campo, che e' il richiamo vecchio; non su quella che
+       l'operatrice ha appena scritto lei. */
+    const proposta = eOmnia(c) ? (esito === 'Ci pensa' ? c.ricontatto_proposto
+                                : esito === 'Richiamata' ? c.ricontatto_proposto_richiamata : null) : null;
+    if(proposta && !dataToccata){
+      q('[data-ricontatto]').value = perInput(new Date(proposta));
+    }else if(k.ricontatto === 'obbligatoria' && !q('[data-ricontatto]').value){
       /* «Ci pensa» su chi deve comprare il biglietto si richiama dopo tre
          giorni lavorativi: abbastanza per pensarci, non tanto da dimenticarsi
          della telefonata. FC30 non scade, quindi la data e' un appuntamento,
@@ -1854,7 +1924,7 @@ async function apriScheda(id){
   };
 
   q('[data-esito]').onchange = () => { adattaCampi(); aggiornaContatore(); aggiornaEtichetteMessaggi(); };
-  q('[data-ricontatto]').oninput = () => aggiornaEtichetteMessaggi();
+  q('[data-ricontatto]').oninput = () => { dataToccata = true; aggiornaEtichetteMessaggi(); };
   q('[data-profilazione]').oninput = () => aggiornaEtichetteMessaggi();
 
   /* Le date già prese si ritrovano nei campi: senza, riaprire una scheda e
@@ -1922,8 +1992,14 @@ async function apriScheda(id){
       ricontatto_il: q('[data-ricontatto]').value ? new Date(q('[data-ricontatto]').value).toISOString() : null,
       profilazione_promessa_il: q('[data-profilazione]').value || null
     };
+    /* Su Omnia, chiusa la chiamata, si propone il messaggio che le va dietro.
+       Si compone adesso, sullo stato di prima: dopo il salvataggio i buchi
+       registrati sono uno in piu' e uscirebbe quello del giro dopo. */
+    const daProporre = eOmnia(c) && c.telefono ? messaggioOmniaDopo(c, esito, corpo.ricontatto_il) : null;
+    let idSalvato;
     try{
       const id = await assicuraChiamata();
+      idSalvato = id;
       await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify(corpo) });
     }catch(e){
       avviso('[data-avviso-scheda]', e.message);
@@ -1947,6 +2023,7 @@ async function apriScheda(id){
     chiudi();
     confermaSalvataggio(`Salvato: ${(c.nome||'contatto').trim()}, ${esito}`
       + (corpo.ricontatto_il && !TERMINALI.has(esito) ? `, richiamo ${richiamoCorto(corpo.ricontatto_il)}` : ''));
+    if(daProporre) apriComposizione(c, 'whatsapp', idSalvato, null, { messaggio: daProporre });
     await Promise.all([caricaCoda(true), caricaKpi()]);
   };
 
@@ -2010,18 +2087,31 @@ async function apriScheda(id){
     /* Un buco gia' registrato vuol dire che questo e' il secondo giorno: dopo
        questo il contatto si archivia. */
     const secondo = (c.tentativi_a_vuoto || 0) >= 1;
-    /* Omnia non ha ancora messaggi suoi: il tentativo a vuoto si registra e basta,
-       senza il popup del WhatsApp Forum. */
+    /* Omnia ha la sua sequenza: primo buco «Richiamata», domattina alle 9, con il
+       WhatsApp «ti ho cercato»; secondo buco «Non risponde» con il messaggio che
+       porta il link e i due bottoni. Da li' la persona decide da sola sulla
+       pagina, quindi non si archivia: si riprova fra due giorni lavorativi se
+       intanto non ha premuto niente. */
     const omnia = eOmnia(c);
-    const m = omnia ? null : componiMessaggio(c, undefined, { tentativoAVuoto: secondo ? 2 : 1 });
-    const quando = secondo ? null : prossimoGiornoLavorativo();
+    const esitoBuco = omnia ? (secondo ? 'Non risponde' : 'Richiamata')
+                            : (secondo ? 'Non raggiungibile' : 'Non risponde');
+    const m = omnia ? messaggioOmniaDopo(c, esitoBuco)
+                    : componiMessaggio(c, undefined, { tentativoAVuoto: secondo ? 2 : 1 });
+    const quando = omnia
+      ? (secondo ? giorniLavorativi(2)
+         : (c.ricontatto_proposto_richiamata ? new Date(c.ricontatto_proposto_richiamata) : prossimoGiornoLavorativo()))
+      : (secondo ? null : prossimoGiornoLavorativo());
     /* La domanda prima di tutto: segnare «non risponde» a chi non ha ancora
        ricevuto niente lo toglie dalla coda di oggi senza che gli sia arrivato
        un solo messaggio. Se la risposta e' no, qui non succede niente e i due
        pulsanti per mandarli sono li' accanto. */
     const chi = (c.nome || '').trim() || 'questo contatto';
-    const conseguenza = secondo
-      ? 'secondo giorno a vuoto: parte l\'ultimo messaggio e il contatto si archivia — non torna piu\' in lista'
+    const conseguenza = omnia
+      ? `si segna «${esitoBuco}», si richiama ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`
+        + ` alle ${quando.toLocaleTimeString('it-IT',{hour:'numeric',minute:'2-digit'})}`
+        + (m ? ' e ti propongo il WhatsApp da mandargli' : '')
+      : secondo
+      ? 'secondo giorno a vuoto: parte l\'ultimo messaggio e il contatto si archivia; non torna piu\' in lista'
       : `si segna «Non risponde» e si richiama ${quando.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}`;
     if(omnia){
       if(!confirm(`Segno il tentativo a vuoto su ${chi}?\n\nOK: ${conseguenza}.\nAnnulla: non segno niente.`)) return;
@@ -2040,15 +2130,16 @@ async function apriScheda(id){
       await api('/chiamata/' + id, { method:'PATCH', body: JSON.stringify({
         /* Primo buco: si riprova il giorno dopo. Secondo: si archivia, e serve
            un esito diverso perche' e' l'esito a dire se un contatto e' chiuso. */
-        esito: secondo ? 'Non raggiungibile' : 'Non risponde',
+        esito: esitoBuco,
         connessa: false,
         durata_secondi: partita ? Math.round((Date.now()-partita)/1000) : 0,
         ricontatto_il: quando ? quando.toISOString() : null
       })});
       if(omnia){
         chiudi();
-        confermaSalvataggio(`Salvato: ${chi}, ${secondo ? 'Non raggiungibile' : 'Non risponde'}`
+        confermaSalvataggio(`Salvato: ${chi}, ${esitoBuco}`
           + (quando ? `, richiamo ${richiamoCorto(quando.toISOString())}` : ''));
+        if(m) apriComposizione(c, 'whatsapp', id, null, { messaggio: m });
         await Promise.all([caricaCoda(true), caricaKpi()]);
         return;
       }
@@ -2161,6 +2252,9 @@ async function apriScheda(id){
 /* Il bottone rapido dice già cosa succede: al primo buco si richiama domani,
    al secondo si chiude. */
 function etichettaNonRisponde(c){
+  if(eOmnia(c)) return (c.tentativi_a_vuoto || 0) >= 1
+    ? 'Non risponde · secondo tentativo, link'
+    : 'Non risponde · Richiamata domattina';
   if((c.tentativi_a_vuoto || 0) >= 1) return 'Non risponde · archivia';
   const g = prossimoGiornoLavorativo();
   return 'Non risponde · richiamo ' + g.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
@@ -2238,22 +2332,21 @@ function scriptPer(c){
   return '02';
 }
 
-/* Gli script Omnia sono l'08, il 09 e il 10 e escono piu' avanti dalla
-   dashboard: finche' l'indice dell'API non li elenca, la pagina non ne mostra
-   nessuno. L'abbinamento alla fascia e' provvisorio, da confermare quando
-   escono; non si ripiega mai su uno script Forum ne' su un altro Omnia. */
-const SCRIPT_OMNIA_PER_FASCIA = [
-  [/^O1\b/, '08'], [/^O2\b/, '08'], [/^O3\b/, '09'], [/^O4\b/, '10'], [/^O5\b/, '08']
-];
+/* Quale script Omnia per quale fascia lo decide il server (`mappa.OMNIA` in
+   GET /script), con le prime due lettere della fascia: O1 → 08 e cosi' via.
+   Se la mappa non c'e', o indica uno script che l'indice non elenca ancora (l'11
+   dei freddi), la scheda dice «in arrivo». Mai uno script Forum, mai un altro
+   Omnia al suo posto. */
 let INDICE_SCRIPT = null;
 async function numeroScriptOmnia(c){
-  const fascia = String(c.fascia || '');
-  const voce = SCRIPT_OMNIA_PER_FASCIA.find(([prova]) => prova.test(fascia));
-  if(!voce) return null;
   try{
-    if(!INDICE_SCRIPT) INDICE_SCRIPT = (await api('/script')).script || [];
+    if(!INDICE_SCRIPT) INDICE_SCRIPT = await api('/script');
   }catch(e){ return null; }
-  return INDICE_SCRIPT.some(s => String(s.numero) === voce[1]) ? voce[1] : null;
+  const mappa = INDICE_SCRIPT.mappa && INDICE_SCRIPT.mappa.OMNIA;
+  if(!mappa) return null;
+  const numero = mappa[String(c.fascia || '').slice(0, 2).toUpperCase()];
+  if(!numero) return null;
+  return (INDICE_SCRIPT.script || []).some(s => String(s.numero) === String(numero)) ? String(numero) : null;
 }
 
 /* Gli script si scaricano una volta sola per sessione: sono gli stessi per
@@ -2268,6 +2361,12 @@ async function caricaScript(numero){
    non deve tradurre niente mentre ha qualcuno al telefono. Quello che non
    sappiamo resta fra parentesi quadre, visibile, invece di sparire. */
 function personalizza(testo, c){
+  /* Su Omnia ci sono tre segnaposto in piu' e [DATA] e' un'altra data: quella
+     proposta dal server per risentirsi, non l'impegno del Forum. */
+  if(eOmnia(c)) testo = String(testo)
+    .replace(/\[LINK\]/g, c.omnia_link || '[LINK]')
+    .replace(/\[SETTORE\]/g, (c.settore || '').trim() || 'nel tuo settore')
+    .replace(/\[DATA\]/g, dataDetta(c.ricontatto_proposto) || '[DATA]');
   return String(testo)
     .replace(/\{BRAND\}/g, marchioPer(c))
     .replace(/\[NOME\]/g, (c.nome || '').trim() || '[NOME]')
@@ -2334,6 +2433,232 @@ function mostraScript(s, c){
    la pagina non filtra e non ricalcola niente, mostra quello che arriva. Con
    un'API che non manda ancora `campagna` ne' `cta` OMNIA tutto resta Forum. */
 const eOmnia = c => !!c && (c.campagna === 'omnia' || c.cta === 'OMNIA');
+const lavoraOmnia = () => ((io && io.campagne) || []).includes('omnia');
+
+/* ═══════════════ Omnia: la decisione della persona ═══════════════
+   La chiamata Omnia non vende: manda il link personale, e la persona decide
+   sulla sua pagina («Voglio approfondire», «Non mi interessa», «Chiamatemi»).
+   Quando lo dice al telefono, la console ha gli stessi due bottoni. Da quel
+   momento il contatto e' del CRM ed esce da qui: la scheda lo dice con un
+   bollino, che si legge da `omnia_livello` e non si ricalcola mai qui. */
+function badgeOmnia(r){
+  if(!eOmnia(r)) return '';
+  const l = r.omnia_livello;
+  if(l === 'chiamatemi')      return '<span class="pill in-crm urgente">In CRM · urgente</span>';
+  if(l === 'approfondire' || (!l && r.ultimo_esito === ESITO_INTERESSATO))
+                              return '<span class="pill in-crm">In CRM</span>';
+  if(l === 'non_interessato') return '<span class="pill omnia-no">Non interessato</span>';
+  if(l === 'acquistato')      return '<span class="pill si">Acquistato</span>';
+  return '';
+}
+
+/* I bottoni compaiono solo su una scheda Omnia ancora aperta. L'eccezione e'
+   chi e' gia' in CRM senza urgenza: a lui resta «Chiamatemi», che e' il passo
+   in su. Con un'API che non manda `campagna` non compare niente. */
+function htmlDecisioneOmnia(c, dove){
+  if(!eOmnia(c)) return '';
+  const l = c.omnia_livello;
+  if(l === 'chiamatemi' || l === 'acquistato' || l === 'non_interessato') return '';
+  const soloChiamatemi = l === 'approfondire';
+  if(!soloChiamatemi && chiuso(c)) return '';
+  return `<div class="decisione-omnia" data-decisione="${dove}">
+    ${soloChiamatemi ? '' : '<button type="button" class="btn indaco" data-interessato="approfondire">Voglio approfondire</button>'}
+    <button type="button" class="btn indaco-chiaro" data-interessato="chiamatemi">Chiamatemi</button>
+    <small>${soloChiamatemi
+      ? 'È già in CRM. Se adesso vuole essere chiamato da un consulente, «Chiamatemi» rende la scheda urgente.'
+      : 'Se la persona decide al telefono: si apre la scheda in CRM e il contatto esce dalla tua coda.'}</small>
+  </div>`;
+}
+
+/* Una conferma con una nota dentro. `confirm` e `prompt` non bastano: per
+   «Chiamatemi» la nota e' obbligatoria e il pulsante deve restare spento
+   finche' non e' abbastanza lunga da servire al consulente. */
+function chiediNota({ titolo, domanda, etichetta, minimo, conferma }){
+  return new Promise(risolvi => {
+    const velo = document.createElement('div');
+    velo.className = 'velo';
+    velo.style.zIndex = 70;
+    velo.innerHTML = `
+     <div class="composa">
+      <header><span class="marchio">${esc(titolo)}</span></header>
+      <div class="corpo">
+        <p style="margin:0 0 12px">${esc(domanda)}</p>
+        <label>${esc(etichetta)}</label>
+        <textarea data-nota style="min-height:110px" maxlength="2000"></textarea>
+        <p class="contatore" data-conta></p>
+        <div class="azioni">
+          <button class="btn oro" data-si>${esc(conferma)}</button>
+          <button class="btn" style="background:#3A3168" data-no>Annulla</button>
+        </div>
+      </div>
+     </div>`;
+    document.body.appendChild(velo);
+    const q = s => velo.querySelector(s);
+    const fine = v => { velo.remove(); risolvi(v); };
+    const aggiorna = () => {
+      const n = q('[data-nota]').value.trim().length;
+      q('[data-si]').disabled = n < minimo;
+      q('[data-conta]').textContent = minimo
+        ? `${n} caratteri, minimo ${minimo}` : `${n} caratteri, facoltativa`;
+      q('[data-conta]').classList.toggle('corto', n < minimo);
+    };
+    q('[data-nota]').oninput = aggiorna;
+    q('[data-si]').onclick = () => fine(q('[data-nota]').value.trim());
+    q('[data-no]').onclick = () => fine(null);
+    velo.addEventListener('click', e => { if(e.target === velo) fine(null); });
+    aggiorna();
+    q('[data-nota]').focus();
+  });
+}
+
+async function segnaInteressato(c, livello, bottone, dopo){
+  const approfondire = livello === 'approfondire';
+  const nota = await chiediNota(approfondire
+    ? { titolo:'VOGLIO APPROFONDIRE', minimo:0, conferma:'Sì, passa al CRM',
+        domanda:'La persona vuole approfondire Omnia? Si apre la scheda in CRM e il contatto esce dalla tua coda.',
+        etichetta:'Cosa ha chiesto?' }
+    : { titolo:'CHIAMATEMI', minimo:20, conferma:'Sì, scheda urgente',
+        domanda:'La persona vuole essere chiamata da un consulente? La scheda in CRM diventa urgente.',
+        etichetta:'Cosa ha detto? Il consulente lo legge prima di chiamare.' });
+  if(nota === null) return;
+  bottone.disabled = true;
+  try{
+    const r = await api('/interessato', { method:'POST', body: JSON.stringify({
+      contatto_id: c.id, livello, ...(nota ? { nota: nota.slice(0, 2000) } : {}) }) });
+    confermaSalvataggio(r.gia ? 'Era già in CRM'
+      : r.crm === 'scheda_esistente' ? 'Aveva già una scheda aperta in CRM: aggiunta una nota'
+      : `Passato al CRM: lo richiama ${r.crm_owner_email ? (io && io.nome) || 'tu' : 'un closer'}`);
+    dopo();
+  }catch(e){
+    /* Prima del deploy l'endpoint non c'e': si dice e non si tocca niente. */
+    alert(e.message === 'Endpoint non previsto.' ? 'Funzione non ancora attiva' : e.message);
+    bottone.disabled = false;
+  }
+}
+
+/* ═══════════════ Omnia: i messaggi ═══════════════
+   I testi stanno sul server (GET /messaggi-omnia), che li usa anche per il
+   promemoria del mattino: copiarli qui vorrebbe dire due versioni che prima o
+   poi divergono. La pagina li scarica una volta e riempie i segnaposto. */
+let MESSAGGI_OMNIA = null;
+let caricamentoMessaggiOmnia = null;
+function caricaMessaggiOmnia(){
+  if(MESSAGGI_OMNIA) return Promise.resolve(MESSAGGI_OMNIA);
+  if(!caricamentoMessaggiOmnia) caricamentoMessaggiOmnia = api('/messaggi-omnia')
+    .then(d => (MESSAGGI_OMNIA = d.messaggi || []))
+    .catch(() => { caricamentoMessaggiOmnia = null; return null; });
+  return caricamentoMessaggiOmnia;
+}
+
+/* «domani alle 18», «oggi alle 9:30», «giovedì 8 ottobre alle 18». Nel recap la
+   data sta dopo «entro», e detta cosi' suona come la direbbe una persona. */
+function dataDetta(v){
+  if(!v) return null;
+  const d = new Date(v);
+  if(isNaN(d)) return null;
+  const ora = 'alle ' + d.getHours() + (d.getMinutes() ? ':' + String(d.getMinutes()).padStart(2,'0') : '');
+  const giorno = x => x.toLocaleDateString('sv-SE');
+  const oggi = new Date(), domani = new Date(Date.now() + 864e5);
+  if(giorno(d) === giorno(oggi)) return 'oggi ' + ora;
+  if(giorno(d) === giorno(domani)) return 'domani ' + ora;
+  return d.toLocaleDateString('it-IT',{weekday:'long', day:'numeric', month:'long'}) + ' ' + ora;
+}
+
+const TITOLI_OMNIA = { 1:'Omnia · ti ho cercato', 2:'Omnia · recap col link', 3:'Omnia · secondo tentativo, link', 4:'Omnia · promemoria del mattino' };
+
+/* Un messaggio Omnia pronto per il popup. Quello che non si riesce a riempire
+   blocca l'invio: un [LINK] o un [DATA] non sostituito non deve mai partire. */
+function componiOmnia(c, chiave, data){
+  const base = { quale:'omnia', obiettivo:'omnia', tentativo:0, tipo:'omnia', pacchetto:'base',
+                 data:null, prezzo:null, edizione:null, brand:'MigaMATCH', oggetto:'' };
+  const msg = (MESSAGGI_OMNIA || []).find(x => x.chiave === chiave);
+  if(!msg) return Object.assign(base, { mancano:['omnia'], titolo:'messaggi Omnia',
+                                        testo:'', testoEmail:'', testoSms:'' });
+  const valori = {
+    NOME: (c.nome || '').trim(),
+    OPERATRICE: ((io && io.nome) || '').trim() || null,
+    LINK: c.omnia_link || null,
+    DATA: dataDetta(data || c.ricontatto_proposto)
+  };
+  let testo = msg.testo;
+  if(valori.NOME === '') testo = testo.replace(/ \[NOME\]/g, '');
+  testo = testo.replace(/\[(NOME|OPERATRICE|LINK|DATA)\]/g, (m, k) => valori[k] || m);
+  const mancano = [];
+  if(/\[LINK\]/.test(testo)) mancano.push('link');
+  if(/\[DATA\]/.test(testo)) mancano.push('data');
+  if(/\[(NOME|OPERATRICE)\]/.test(testo)) mancano.push('segnaposto');
+  return Object.assign(base, { quale:'omnia_' + msg.numero, tentativo: msg.numero, mancano,
+    titolo: TITOLI_OMNIA[msg.numero] || msg.titolo, testo, testoEmail: testo, testoSms: testo });
+}
+
+/* Quale messaggio va dietro a quale esito lo dice il server (`dopo_esito`).
+   L'unico caso che il server non distingue e' il «Non risponde»: il suo
+   messaggio e' quello del SECONDO buco, quindi serve un buco gia' registrato. */
+function chiaveOmniaDopo(c, esito){
+  if(!esito || !MESSAGGI_OMNIA) return null;
+  if(esito === 'Non risponde' && (c.tentativi_a_vuoto || 0) < 1) esito = 'Richiamata';
+  const m = MESSAGGI_OMNIA.find(x => x.dopo_esito === esito);
+  return m ? m.chiave : null;
+}
+function messaggioOmniaDopo(c, esito, data){
+  const chiave = chiaveOmniaDopo(c, esito);
+  return chiave ? componiOmnia(c, chiave, data) : null;
+}
+
+/* Il menu nella scheda: i tre che manda l'operatrice, e il quarto da leggere
+   soltanto, perche' parte da solo la mattina della data «Ci pensa». */
+async function disegnaMenuMessaggiOmnia(dove, c, idChiamata){
+  const lista = await caricaMessaggiOmnia();
+  if(!lista || !lista.length || !dove.isConnected) return;
+  const suggerito = chiaveOmniaDopo(c, c.ultimo_esito);
+  const voce = m => {
+    const pronto = componiOmnia(c, m.chiave);
+    const senzaLink = pronto.mancano.includes('link');
+    if(!m.dopo_esito) return `<div class="voce">
+        <span><b>${m.numero}.</b> ${esc(m.titolo)} <span style="color:var(--tenue)">· lo manda il sistema la mattina</span></span>
+        <details style="flex-basis:100%"><summary style="cursor:pointer;color:var(--tenue);font-size:.82rem">leggi il testo</summary>
+          <p class="nota-riga" style="white-space:pre-wrap">${esc(pronto.testo)}</p></details>
+      </div>`;
+    return `<div class="voce${m.chiave === suggerito ? ' suggerito' : ''}">
+        <span><b>${m.numero}.</b> ${esc(m.titolo)}${m.chiave === suggerito ? ' · <b>quello che tocca adesso</b>' : ''}${
+          senzaLink ? '<br><span style="color:#98292E;font-size:.82rem">Manca il link: la persona non ha un account MigaMATCH</span>' : ''}</span>
+        <button type="button" class="btn verde" data-apri-omnia="${esc(m.chiave)}" ${senzaLink || !c.telefono ? 'disabled' : ''}>Apri</button>
+      </div>`;
+  };
+  dove.innerHTML = `<details class="messaggi-omnia"${suggerito ? ' open' : ''}>
+      <summary>Messaggi Omnia · WhatsApp</summary>
+      <div class="dentro">${lista.map(voce).join('')}</div>
+    </details>`;
+  dove.querySelectorAll('[data-apri-omnia]').forEach(b => {
+    b.onclick = () => apriComposizione(c, 'whatsapp', idChiamata(), null,
+      { messaggio: componiOmnia(c, b.dataset.apriOmnia) });
+  });
+}
+
+/* ═══════════════ Omnia: appuntamenti qualificati oggi ═══════════════
+   Le persone mandate al CRM oggi con i due bottoni, contate dal server sui tag
+   del CRM e non sulle chiamate. Si vede solo a chi lavora Omnia. */
+let appuntamentiOggi = null;
+async function caricaAppuntamenti(){
+  if(!lavoraOmnia()){ $('#appuntamenti').classList.add('nascosto'); return; }
+  try{ appuntamentiOggi = await api('/appuntamenti-oggi'); }
+  catch(e){ appuntamentiOggi = null; }
+  disegnaAppuntamenti();
+}
+function disegnaAppuntamenti(){
+  const box = $('#appuntamenti');
+  if(!appuntamentiOggi || !io){ box.classList.add('nascosto'); return; }
+  const tutti = appuntamentiOggi.operatori || [];
+  const mio = tutti.find(o => o.operatore_id === io.operatore_id) || { approfondire:0, chiamatemi:0, totale:0 };
+  const altri = io.ruolo === 'admin'
+    ? tutti.filter(o => o.operatore_id !== io.operatore_id)
+        .map(o => `<span title="approfondire ${o.approfondire} / chiamatemi ${o.chiamatemi}">${esc(o.nome)} <b>${o.totale}</b></span>`)
+    : [];
+  box.classList.remove('nascosto');
+  box.innerHTML = `<span title="approfondire ${mio.approfondire} / chiamatemi ${mio.chiamatemi}">
+      Appuntamenti qualificati oggi: <b>${mio.totale}</b></span>${
+      altri.length ? ' · ' + altri.join(' · ') : ''}`;
+}
 
 /* Il passaggio compare solo se l'API manda `campagna`: con un'API vecchia il
    pulsante non c'e'. Il ritorno da Omnia a Forum resta a tutti fino al 17
@@ -3047,12 +3372,18 @@ function componiMessaggio(c, operatore, opzioni){
   const brand = marchioPer(c);
   const obiettivo = obiettivoPer(c);
   /* I testi qui sotto sono tutti del Forum: recap con il biglietto, link con FC30,
-     Economy. A un contatto Omnia non devono partire, nemmeno per sbaglio. Finche'
-     non esistono i messaggi Omnia il popup resta bloccato e dice perche'. */
+     Economy. A un contatto Omnia non devono partire, nemmeno per sbaglio. I suoi
+     arrivano dal server e sono solo WhatsApp: email e SMS restano bloccati. */
   if(eOmnia(c)){
-    return { quale:'omnia', obiettivo, tentativo:0, tipo:'promemoria', pacchetto:'base',
-             mancano:['omnia'], data:null, prezzo:null, edizione:null, titolo:'messaggi Omnia',
-             brand:'MigaMATCH', oggetto:'', testo:'', testoEmail:'', testoSms:'' };
+    const bloccato = motivo => ({ quale:'omnia', obiettivo, tentativo:0, tipo:'omnia', pacchetto:'base',
+             mancano:[motivo], data:null, prezzo:null, edizione:null, titolo:'messaggi Omnia',
+             brand:'MigaMATCH', oggetto:'', testo:'', testoEmail:'', testoSms:'' });
+    if(o.canale === 'email' || o.canale === 'sms') return bloccato('omnia_canale');
+    if(!MESSAGGI_OMNIA) return bloccato('omnia');
+    const esitoOra = o.esito || c.ultimo_esito || '';
+    /* La data del recap e' quella nel modulo quando c'e': e' quella che verra' salvata. */
+    return messaggioOmniaDopo(c, esitoOra, esitoOra === 'Ci pensa' ? c.ricontatto_il : null)
+      || bloccato('omnia_scegli');
   }
   /* `o.esito` è quello selezionato adesso nel menu della scheda: serve perché i
      pulsanti cambino testo mentre l'operatrice compila, senza dover prima
@@ -3185,7 +3516,15 @@ function perchePuoMancare(m){
   if(m.mancano.includes('edizione'))
     q.push('non risulta a quale Forum abbia partecipato: controlla le fonti del contatto');
   if(m.mancano.includes('omnia'))
-    q.push('i messaggi per la campagna Omnia non sono ancora pronti: se serve scrivere al contatto, parlane con Oscar');
+    q.push('i messaggi Omnia non si sono caricati dal server: riprova fra un momento, e se continua parlane con Oscar');
+  if(m.mancano.includes('omnia_canale'))
+    q.push('i messaggi Omnia partono solo su WhatsApp: usa il menu «Messaggi Omnia» nella scheda');
+  if(m.mancano.includes('omnia_scegli'))
+    q.push('per questo esito non c\'è un messaggio Omnia da proporre: scegli quello giusto dal menu «Messaggi Omnia» nella scheda');
+  if(m.mancano.includes('link'))
+    q.push('manca il link: la persona non ha un account MigaMATCH');
+  if(m.mancano.includes('segnaposto'))
+    q.push('nel testo è rimasto un segnaposto da riempire');
   if(m.mancano.includes('il numero da cui richiami'))
     q.push('nella tua scheda operatore non c\'è un numero di telefono, e l\'SMS deve dire da dove '
       + 'arriverà la chiamata: senza, è un messaggio a cui non si può nemmeno rispondere');
@@ -3199,7 +3538,10 @@ function perchePuoMancare(m){
    messaggio sta per mandare prima di aprirlo — e perché cambiando esito nel
    menu cambia anche il messaggio, senza che nulla lo lasciasse capire. */
 const COSA_PARTE = {
-  omnia:              'messaggi Omnia in arrivo',
+  omnia:              'Omnia, scegli dal menu',
+  omnia_1:            'Omnia · ti ho cercato',
+  omnia_2:            'Omnia · recap col link',
+  omnia_3:            'Omnia · secondo tentativo, link',
   benvenuto_acquisto: 'benvenuto e istruzioni',
   bene_profilazione:  'recap e link del profilo',
   promessa_scaduta:   'ultimo messaggio, promessa scaduta',
@@ -3218,6 +3560,7 @@ function etichettaMessaggio(m){
 }
 
 function etichettaEmail(m){
+  if(m.mancano.includes('omnia_canale')) return 'Email · Omnia va su WhatsApp';
   const c = COSA_PARTE[m.quale];
   return c ? 'Email · ' + c : 'Email';
 }
