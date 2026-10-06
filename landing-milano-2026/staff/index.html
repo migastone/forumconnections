@@ -2424,7 +2424,10 @@ function personalizza(testo, c){
      proposta dal server per risentirsi, non l'impegno del Forum. */
   if(eOmnia(c)) testo = String(testo)
     .replace(/\[LINK\]/g, c.omnia_link || '[LINK]')
-    .replace(/\[SETTORE\]/g, (c.settore || '').trim() || 'nel tuo settore')
+    /* Gli script scrivono «nel settore [SETTORE]»: senza settore in scheda l'operatrice
+       leggeva «nel settore nel tuo settore». Si sostituisce l'espressione intera. */
+    .replace(/nel settore \[SETTORE\]/g, (c.settore || '').trim() ? 'nel settore ' + c.settore.trim() : 'nel tuo settore')
+    .replace(/\[SETTORE\]/g, (c.settore || '').trim() || 'il tuo settore')
     .replace(/\[DATA\]/g, dataDetta(c.ricontatto_proposto) || '[DATA]');
   return String(testo)
     .replace(/\{BRAND\}/g, marchioPer(c))
