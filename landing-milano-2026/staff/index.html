@@ -6,17 +6,13 @@
 <link rel="icon" href="/assets/img/logo-fc-simbolo.png">
 
 <script>
-/* La console vive su un indirizzo solo. Il sito risponde anche senza www e in
-   http, ma l'API accetta richieste soltanto da https://www.forumconnections.com:
-   da un altro indirizzo il codice via email passa, poi il browser blocca la
-   chiamata all'API e resta un «Failed to fetch» che sembra un codice sbagliato.
-   E' successo a Walter e Roberto il primo giorno di Omnia (6 ottobre 2026).
-   Qui in testa, prima di disegnare qualcosa, si torna su quello giusto. */
+/* La console e' stata clonata su auto.migamatch.com/staff/ e ricontatti-api
+   accetta ora anche quell'origine (7 ottobre 2026): questa copia resta solo
+   per chi ha ancora il vecchio indirizzo salvato. Si riapre da sola sul nuovo
+   indirizzo invece di disegnare la pagina, cosi' chi clicca un bookmark vecchio
+   non finisce su una console abbandonata. */
 (function(){
-  var giusto = 'https://www.forumconnections.com';
-  var h = location.hostname;
-  if((h === 'forumconnections.com' || h === 'www.forumconnections.com') && location.origin !== giusto)
-    location.replace(giusto + location.pathname + location.search + location.hash);
+  location.replace('https://auto.migamatch.com' + location.pathname + location.search + location.hash);
 })();
 </script>
 
