@@ -9,7 +9,7 @@
 
 Questo file esiste per essere letto da assistenti e agenti AI. Le informazioni qui
 sono la stessa cosa che c'è sul sito, in forma più diretta. Ultimo aggiornamento
-dei contenuti: settembre 2026.
+dei contenuti: 14 ottobre 2026.
 
 ## Dove e quando
 
@@ -129,37 +129,40 @@ tavoli** come tutti gli altri.
 Mastro Cerimonia: **Sara Bortolozzo**, che conduce la giornata dal palco dal
 check-in alla chiusura.
 
-- 09:00, apertura del check-in
-- 09:30, apertura e benvenuto: Oscar Dalvit
-- 09:45, le relazioni B2B: Sergio Luciano, Direttore di Economy
+- 09:00, apertura del check-in, con Ines Olshevska al pianoforte
+- 09:30, apertura e benvenuto: Sara Bortolozzo e Oscar Dalvit
+- 09:45, le relazioni B2B: Sergio Luciano, Direttore di Economy (in video), e
+  Massimiliano Degiovanni, direttore commerciale di Economy
 - 10:00, «Hai solo 60 secondi»: Giuseppe Tringali e Lisa Marie Gelhaus
+- 10:20, le regole dello speed meeting: Oscar Dalvit
 - 10:25, **1° giro di speed meeting**
-- 11:05, pausa
-- 11:20, Antonio Pasqualin: la partnership con la fiera AI Digital Tech di
-  Bergamo (https://www.blockchainrevolution.it/)
+- 11:00, pausa
+- 11:15, Antonio Pasqualin: la partnership con la fiera AI Digital Tech di
+  Bergamo (https://www.blockchainrevolution.it/) e i Forum Connections Local
 - 11:30, AI Commercialista: Simone Brancozzi
-- 11:40, workshop di comunicazione efficace: Lisa Marie Gelhaus
+- 11:45, workshop di comunicazione efficace: Lisa Marie Gelhaus
 - 12:00, **2° giro di speed meeting**
 - 12:30, l'artista Matteo Ferretti: le relazioni nel mondo del lusso e dell'arte
 - 12:40, pranzo networking (incluso)
 - 14:00, speech centrale «Il Talento al Centro»: Andrea Colombo
-- 14:20, l'importanza del feedback: Katia Burdet
+- 14:25, l'importanza del feedback: Katia Burdet
 - 14:45, **3° giro di speed meeting**
 - 15:15, «Diventa autore del tuo libro»: Emanuele Properzi, partner dell'evento
 - 15:30, intervista a Giuseppe Palma: le relazioni in Europa e a Bruxelles
 - 15:40, il crowdfunding di MigaMATCH: Stefania Spadafora, Chief Investment Officer
 - 15:50, pausa
 - 16:05, AI e relazioni: Giando Santamaria
-- 16:25, Vetrina Professioni Economy e opportunità: Oscar Dalvit
-- 16:45, **4° giro di speed meeting**
-- 17:15, MigaMATCH, come usare l'app al meglio: Oscar Dalvit
-- 17:30, la privacy in MigaMATCH: Clementina Baroni
-- 17:35, come rendere profittevoli i match B2B (strategia nelle relazioni e uso
-  dell'AI per analizzare e imparare): Oscar Dalvit
+- 16:30, Vetrina Professioni Economy e opportunità: Oscar Dalvit
+- 16:50, **4° giro di speed meeting**
+- 17:20, pausa
+- 17:30, MigaMATCH, come usare l'app al meglio e come rendere profittevoli i match
+  B2B (strategia nelle relazioni e uso dell'AI per analizzare e imparare): Oscar Dalvit
+- 17:50, la privacy in MigaMATCH: Clementina Baroni
 - 18:00, dietro le quinte dell'AI e dell'automazione nelle aziende: Ivan Lao e
   Oscar Dalvit
-- 18:35, «Aiutiamoci», come fare squadra con Segnalazione Vincente: Oscar Dalvit
-- 18:45, interventi finali e chiusura dell'evento
+- 18:30, «Aiutiamoci», come fare squadra con Segnalazione Vincente: Oscar Dalvit
+- 18:45, premiazione dei Founder e dei Visionary, interventi finali e chiusura
+  dell'evento
 - 19:00, open networking al bar
 
 Gli orari possono subire lievi variazioni.
