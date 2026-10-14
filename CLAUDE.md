@@ -62,7 +62,7 @@ del repo è archivio o materiale di lavoro.
    con lo SHA e genera `VERSIONE.txt`: la pagina confronta i due e avvisa l'operatore quando sta
    girando una copia vecchia rimasta in cache. In locale il confronto si disattiva da solo.
 
-4. **Foto e loghi.** Gli originali stanno in root e **non** si versionano; nel repo entra solo il
+4. **Foto e loghi.** Gli originali stanno in `foto-ospiti-originali/` (fuori da git) e **non** si versionano; nel repo entra solo il
    ritaglio pronto: ritratti quadrati 400×400 in `assets/img/sp-<cognome>.jpg` (la griglia li
    mostra in cerchio da 130px), loghi delle aziende partner in `assets/img/partner-*.jpg`.
 
